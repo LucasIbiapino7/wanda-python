@@ -44,77 +44,29 @@ class ValidateService:
         code = data.code # Pega a função
 
         # 1 Validação: Sintexe e indentação
-        try:
-            compile(code, "<string>", "exec")
-        except (SyntaxError, IndentationError) as err:
-            error_message = self.feedback_sintaxe_openai(code) # Chama a função que usa a IA
-            errors.append(error_message) # Adiciona a mensagem da LLM
+        response_validate = self.validate_sintaxe_and_indentation(code)
+        if response_validate:
+            errors.append(response_validate)
+            return ValidateResponse.create(valid=False, errors=errors)
+        
+        tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
+
+        # 2 Validação: Assinatura e argumentos
+        response_validate = self.validate_signature_and_parameters(tree)
+        if response_validate:
+            errors.append(response_validate)
             return ValidateResponse.create(valid=False, errors=errors)
 
-        # 2 Validação: Assinatura da função
-        tree = ast.parse(code)
-        # Verificando a presença da função strategy:
-        strategy_function = None
-        for node in ast.walk(tree): #percorre
-            if isinstance(node, ast.FunctionDef) and node.name == "strategy":
-                strategy_function = node
-                break
-
-        if not strategy_function:
-            error_message = (
-                "Olá! Parece que eu não consegui encontrar a função 'strategy' no seu código. "
-                "Certifique-se de que ela esteja declarada assim:\n\n"
-                "def strategy(card1, card2, card3, opponentCard1, opponentCard2, opponentCard3):\n"
-                "    # Seu código aqui\n\n"
-                "Estou aqui para ajudar, então se precisar, revise cuidadosamente o nome e a indentação!"
-            )
-            errors.append(error_message)
-            return ValidateResponse.create(valid=False, errors=errors) # Cria e Retorna o DTO
-        
-        # Verificando a assinatura da função:
-        expected_args = ["card1", "card2", "card3", "opponentCard1", "opponentCard2", "opponentCard3"]
-        actual_args = [arg.arg for arg in strategy_function.args.args]
-
-        if actual_args != expected_args:
-            error_message = (
-                f"Ei! A assinatura da sua função 'strategy' não está do jeitinho que esperamos.\n\n"
-                f"Esperávamos estes parâmetros: {expected_args}\n"
-                f"Mas encontramos: {actual_args}.\n\n"
-                "Tente corrigir para que fique na ordem e nomes corretos, beleza?"
-            )
-            errors.append(error_message)
-
-        if errors:
-            return ValidateResponse.create(valid=False, errors=errors) # Cria e Retorna o DTO
-        
         # 3 Validação: Verificando comandos maliciosos
-
         malicious_errors = check_for_malicious_code_in_tree(tree)
         if malicious_errors:
-            # Constrói uma mensagem de feedback única, listando cada erro
-            message_lines = [
-                "Olá! Seu código parece conter alguns comandos que podem ser perigosos ou proibidos:",
-                ""
-            ]
-            for err in malicious_errors:
-                message_lines.append(f"• {err}")
-            message_lines.append("")
-            message_lines.append(
-                "Para manter o ambiente seguro, desabilitamos o uso desses módulos/funções. "
-                "Por favor, remova ou substitua esses trechos de código. "
-                "Estou aqui para ajudar caso precise de sugestões!"
-            )
-            # Converte o array em uma string única
-            final_message = "\n".join(message_lines)
-            errors.append(final_message)
+            errors.append(malicious_errors)
             return ValidateResponse.create(valid=False, errors=errors)
-        # --------------------------------------------------------------
 
         # Caso passe em todas as validações, faz uma validação de lógica
         logic_message = self.feedback_logic_openai(code)
         errors.append(logic_message)
         return ValidateResponse.create(valid=True, errors=errors) # Cria e Retorna o DTO
-    
     
     def validate_sintaxe_and_indentation(self, code: str) -> str:
         """
@@ -129,7 +81,7 @@ class ValidateService:
             error_message = self.feedback_sintaxe_openai(code) # Chama a função que usa a IA
             return error_message # Resposta da LLM
     
-    def validate_signature_and_parameters(tree: ast.AST) -> str:
+    def validate_signature_and_parameters(self, tree: ast.AST) -> str:
         """
         Função responsável por validar a assinatura da função, verificando a presença da função "strategy" e 
         se os parametros são os esperados: 
