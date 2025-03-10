@@ -1,10 +1,17 @@
 from wanda_python.schema.validate_dto import ValidateRequest, ValidateResponse
+from dotenv import load_dotenv
 
+import os
+import openai
 import ast
 
 class ValidateService:
 
-    async def validate_strategy_function(self, data: ValidateRequest) -> ValidateResponse:
+    def __init__(self):
+        load_dotenv()
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+
+    async def validate(self, data: ValidateRequest) -> ValidateResponse:
         errors = []
 
         code = data.code # Pega a função
@@ -13,12 +20,85 @@ class ValidateService:
         try:
             compile(code, "<string>", "exec")
         except (SyntaxError, IndentationError) as err:
+            error_message = self.feedback_sintaxe_openai(code) # Chama a função que usa a IA
+            errors.append(error_message) # Adiciona a mensagem da LLM
+            return ValidateResponse.create(valid=False, errors=errors)
+
+
+        # 2 Validação: Assinatura da função
+        tree = ast.parse(code)
+        # Verificando a presença da função strategy:
+        strategy_function = None
+        for node in ast.walk(tree): #percorre
+            if isinstance(node, ast.FunctionDef) and node.name == "strategy":
+                strategy_function = node
+                break
+
+        if not strategy_function:
             error_message = (
-                f"Opa! Seu código tem um problema de sintaxe ou indentação.\n"
-                f"{type(err).__name__}: {err.msg} (linha {err.lineno}, "
-                f"detalhe: {err.text.strip() if err.text else None})"
+                "Olá! Parece que eu não consegui encontrar a função 'strategy' no seu código. "
+                "Certifique-se de que ela esteja declarada assim:\n\n"
+                "def strategy(card1, card2, card3, opponentCard1, opponentCard2, opponentCard3):\n"
+                "    # Seu código aqui\n\n"
+                "Estou aqui para ajudar, então se precisar, revise cuidadosamente o nome e a indentação!"
             )
             errors.append(error_message)
+            return ValidateResponse.create(valid=False, errors=errors) # Cria e Retorna o DTO
+        
+        # Verificando a assinatura da função:
+        expected_args = ["card1", "card2", "card3", "opponentCard1", "opponentCard2", "opponentCard3"]
+        actual_args = [arg.arg for arg in strategy_function.args.args]
+
+        if actual_args != expected_args:
+            error_message = (
+                f"Ei! A assinatura da sua função 'strategy' não está do jeitinho que esperamos.\n\n"
+                f"Esperávamos estes parâmetros: {expected_args}\n"
+                f"Mas encontramos: {actual_args}.\n\n"
+                "Tente corrigir para que fique na ordem e nomes corretos, beleza?"
+            )
+            errors.append(error_message)
+
+        if errors:
+            return ValidateResponse.create(valid=False, errors=errors) # Cria e Retorna o DTO
+        
+        # 3 Validação: Verificando comandos maliciosos
+
+        malicious_errors = check_for_malicious_code_in_tree(tree)
+        if malicious_errors:
+            # Constrói uma mensagem de feedback única, listando cada erro
+            message_lines = [
+                "Olá! Seu código parece conter alguns comandos que podem ser perigosos ou proibidos:",
+                ""
+            ]
+            for err in malicious_errors:
+                message_lines.append(f"• {err}")
+            
+            message_lines.append("")
+            message_lines.append(
+                "Para manter o ambiente seguro, desabilitamos o uso desses módulos/funções. "
+                "Por favor, remova ou substitua esses trechos de código. "
+                "Estou aqui para ajudar caso precise de sugestões!"
+            )
+            
+            # Converte o array em uma string única
+            final_message = "\n".join(message_lines)
+            
+            errors.append(final_message)
+            return ValidateResponse.create(valid=False, errors=errors)
+
+        return ValidateResponse.create(valid=True, errors=errors)
+
+    async def feedback(self, data: ValidateRequest) -> ValidateResponse:
+        errors = []
+
+        code = data.code # Pega a função
+
+        # 1 Validação: Sintexe e indentação
+        try:
+            compile(code, "<string>", "exec")
+        except (SyntaxError, IndentationError) as err:
+            error_message = self.feedback_sintaxe_openai(code) # Chama a função que usa a IA
+            errors.append(error_message) # Adiciona a mensagem da LLM
             return ValidateResponse.create(valid=False, errors=errors)
 
         # 2 Validação: Assinatura da função
@@ -83,9 +163,69 @@ class ValidateService:
             return ValidateResponse.create(valid=False, errors=errors)
         # --------------------------------------------------------------
 
-
+        # Caso passe em todas as validações, faz uma validação de lógica
+        logic_message = self.feedback_logic_openai(code)
+        errors.append(logic_message)
         return ValidateResponse.create(valid=True, errors=errors) # Cria e Retorna o DTO
 
+    def feedback_logic_openai(self, code: str) -> str:
+        client = openai.OpenAI(api_key=self.openai_api_key)
+
+        prompt = f"""
+         Você é um assistente virtual de programação Python para alunos do primeiro período.
+        Nesse ponto, o código do aliuno já passou pela análise de sintaxe, assinatura e indexação, parabenize ele e diga
+        que o código já pode ser salvo, e que aqui vão algumas dicas sobre a lógica do código.
+        Analise a lógica do código e dê dicas de possíveis melhorias, principalmente sobre estes pontos:
+
+        1) A função leva em consideração as cartas do oponente (opponentCard1, opponentCard2, opponentCard3)?
+        2) A função retorna as strings: pedra, papel e tesoura? falta alguma delas ou estão todas no código?
+
+        {code}
+
+        Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+        Use uma linguagem leve e não muito técnica.
+
+        Não apresente o código corrigido por completo. Ao invés disso, explique o que houve e como corrigir, 
+        dando pistas específicas (por exemplo, “você pode verificar se no seu if...”), mas sem reescrever todo o código.
+        """
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300 
+            )
+            answer = response.choices[0].message.content
+            return answer
+        except Exception as e:
+            print(f"Erro ao chamar a API da OpenAI: {e}")
+
+    def feedback_sintaxe_openai(self, code: str) -> str:
+        client = openai.OpenAI(api_key=self.openai_api_key)
+
+        prompt = f"""
+        Você é um assistente virtual de programação Python para alunos do primeiro período.
+        O código abaixo possui erros de sintaxe ou indentação — concentre-se exclusivamente neles.
+
+        {code}
+
+        Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+        Use uma linguagem leve e não muito técnica.
+        Não apresente o código corrigido por completo. Ao invés disso, explique o que houve e como corrigir, dando pistas específicas (por exemplo, “na linha X precisa de dois-pontos”), mas sem reescrever todo o código.
+        Não comente sobre lógica ou melhorias que não sejam estritamente relacionadas a sintaxe/indentação.
+        """
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300 
+            )
+            
+            answer = response.choices[0].message.content
+            return answer
+        except Exception as e:
+            print(f"Erro ao chamar a API da OpenAI: {e}")
 
 def check_for_malicious_code_in_tree(tree: ast.AST) -> list[str]:
     """
