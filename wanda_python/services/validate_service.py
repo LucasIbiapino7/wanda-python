@@ -17,76 +17,26 @@ class ValidateService:
         code = data.code # Pega a função
 
         # 1 Validação: Sintexe e indentação
-        try:
-            compile(code, "<string>", "exec")
-        except (SyntaxError, IndentationError) as err:
-            error_message = self.feedback_sintaxe_openai(code) # Chama a função que usa a IA
-            errors.append(error_message) # Adiciona a mensagem da LLM
+        response_validate = self.validate_sintaxe_and_indentation(code)
+        if response_validate:
+            errors.append(response_validate)
+            return ValidateResponse.create(valid=False, errors=errors)
+        
+        tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
+
+        # 2 Validação: Assinatura e argumentos
+        response_validate = self.validate_signature_and_parameters(tree)
+        if response_validate:
+            errors.append(response_validate)
             return ValidateResponse.create(valid=False, errors=errors)
 
-
-        # 2 Validação: Assinatura da função
-        tree = ast.parse(code)
-        # Verificando a presença da função strategy:
-        strategy_function = None
-        for node in ast.walk(tree): #percorre
-            if isinstance(node, ast.FunctionDef) and node.name == "strategy":
-                strategy_function = node
-                break
-
-        if not strategy_function:
-            error_message = (
-                "Olá! Parece que eu não consegui encontrar a função 'strategy' no seu código. "
-                "Certifique-se de que ela esteja declarada assim:\n\n"
-                "def strategy(card1, card2, card3, opponentCard1, opponentCard2, opponentCard3):\n"
-                "    # Seu código aqui\n\n"
-                "Estou aqui para ajudar, então se precisar, revise cuidadosamente o nome e a indentação!"
-            )
-            errors.append(error_message)
-            return ValidateResponse.create(valid=False, errors=errors) # Cria e Retorna o DTO
-        
-        # Verificando a assinatura da função:
-        expected_args = ["card1", "card2", "card3", "opponentCard1", "opponentCard2", "opponentCard3"]
-        actual_args = [arg.arg for arg in strategy_function.args.args]
-
-        if actual_args != expected_args:
-            error_message = (
-                f"Ei! A assinatura da sua função 'strategy' não está do jeitinho que esperamos.\n\n"
-                f"Esperávamos estes parâmetros: {expected_args}\n"
-                f"Mas encontramos: {actual_args}.\n\n"
-                "Tente corrigir para que fique na ordem e nomes corretos, beleza?"
-            )
-            errors.append(error_message)
-
-        if errors:
-            return ValidateResponse.create(valid=False, errors=errors) # Cria e Retorna o DTO
-        
         # 3 Validação: Verificando comandos maliciosos
-
         malicious_errors = check_for_malicious_code_in_tree(tree)
         if malicious_errors:
-            # Constrói uma mensagem de feedback única, listando cada erro
-            message_lines = [
-                "Olá! Seu código parece conter alguns comandos que podem ser perigosos ou proibidos:",
-                ""
-            ]
-            for err in malicious_errors:
-                message_lines.append(f"• {err}")
-            
-            message_lines.append("")
-            message_lines.append(
-                "Para manter o ambiente seguro, desabilitamos o uso desses módulos/funções. "
-                "Por favor, remova ou substitua esses trechos de código. "
-                "Estou aqui para ajudar caso precise de sugestões!"
-            )
-            
-            # Converte o array em uma string única
-            final_message = "\n".join(message_lines)
-            
-            errors.append(final_message)
+            errors.append(malicious_errors)
             return ValidateResponse.create(valid=False, errors=errors)
-
-        return ValidateResponse.create(valid=True, errors=errors)
+        
+        return ValidateResponse.create(valid=True, errors=errors) # Passou em todas as validações
 
     async def feedback(self, data: ValidateRequest) -> ValidateResponse:
         errors = []
@@ -148,17 +98,14 @@ class ValidateService:
             ]
             for err in malicious_errors:
                 message_lines.append(f"• {err}")
-            
             message_lines.append("")
             message_lines.append(
                 "Para manter o ambiente seguro, desabilitamos o uso desses módulos/funções. "
                 "Por favor, remova ou substitua esses trechos de código. "
                 "Estou aqui para ajudar caso precise de sugestões!"
             )
-            
             # Converte o array em uma string única
             final_message = "\n".join(message_lines)
-            
             errors.append(final_message)
             return ValidateResponse.create(valid=False, errors=errors)
         # --------------------------------------------------------------
@@ -167,6 +114,61 @@ class ValidateService:
         logic_message = self.feedback_logic_openai(code)
         errors.append(logic_message)
         return ValidateResponse.create(valid=True, errors=errors) # Cria e Retorna o DTO
+    
+    
+    def validate_sintaxe_and_indentation(self, code: str) -> str:
+        """
+        Função responsável por verificar a sintaxe e indentação do código.
+        Recebe o código do aluno (code) e retorna uma String vazia caso não tenha erros, ou caso tenha um erro
+        Chama a função que manda o código pra LLM, retornando essa resposta        
+        """
+        try:
+            compile(code, "<string>", "exec")
+            return ""
+        except (SyntaxError, IndentationError) as err:
+            error_message = self.feedback_sintaxe_openai(code) # Chama a função que usa a IA
+            return error_message # Resposta da LLM
+    
+    def validate_signature_and_parameters(tree: ast.AST) -> str:
+        """
+        Função responsável por validar a assinatura da função, verificando a presença da função "strategy" e 
+        se os parametros são os esperados: 
+        "card1", "card2", "card3", "opponentCard1", "opponentCard2", "opponentCard3"
+        Caso não passe em um desses dois testes, retorna uma resposta personalizada, caso passe, retorna 
+        uma String vazia
+        """
+
+        # Verificando a presença da função strategy:
+        strategy_function = None
+        for node in ast.walk(tree): 
+            if isinstance(node, ast.FunctionDef) and node.name == "strategy":
+                strategy_function = node
+                break
+
+        if not strategy_function:
+            error_message = (
+                "Olá! Parece que eu não consegui encontrar a função 'strategy' no seu código. "
+                "Certifique-se de que ela esteja declarada assim:\n\n"
+                "def strategy(card1, card2, card3, opponentCard1, opponentCard2, opponentCard3):\n"
+                "    # Seu código aqui\n\n"
+                "Estou aqui para ajudar, então se precisar, revise cuidadosamente o nome e a indentação!"
+            )
+            return error_message
+        
+        # Verificando a assinatura da função:
+        expected_args = ["card1", "card2", "card3", "opponentCard1", "opponentCard2", "opponentCard3"]
+        actual_args = [arg.arg for arg in strategy_function.args.args]
+
+        if actual_args != expected_args:
+            error_message = (
+                f"Ei! A assinatura da sua função 'strategy' não está do jeitinho que esperamos.\n\n"
+                f"Esperávamos estes parâmetros: {expected_args}\n"
+                f"Mas encontramos: {actual_args}.\n\n"
+                "Tente corrigir para que fique na ordem e nomes corretos, beleza?"
+            )
+            return error_message
+        
+        return "" # Sem erros
 
     def feedback_logic_openai(self, code: str) -> str:
         client = openai.OpenAI(api_key=self.openai_api_key)
@@ -227,7 +229,7 @@ class ValidateService:
         except Exception as e:
             print(f"Erro ao chamar a API da OpenAI: {e}")
 
-def check_for_malicious_code_in_tree(tree: ast.AST) -> list[str]:
+def check_for_malicious_code_in_tree(tree: ast.AST) -> str:
     """
     Recebe a árvore de sintaxe (AST) já parseada e 
     verifica se há uso de módulos/funções proibidas.
@@ -293,5 +295,24 @@ def check_for_malicious_code_in_tree(tree: ast.AST) -> list[str]:
                             f"Uso de chamada proibida: '{module_name}.{func_attr}'. "
                             f"{suspicious_module_calls[(module_name, func_attr)]}"
                         )
-    return errors
+    if errors:
+        # Constrói uma mensagem de feedback única, listando cada erro
+        message_lines = [
+            "Olá! Seu código parece conter alguns comandos que podem ser perigosos ou proibidos:",
+            ""
+        ]
+        for err in errors:
+            message_lines.append(f"• {err}")
+            
+        message_lines.append("")
+        message_lines.append(
+            "Para manter o ambiente seguro, desabilitamos o uso desses módulos/funções. "
+            "Por favor, remova ou substitua esses trechos de código. "
+            "Estou aqui para ajudar caso precise de sugestões!"
+        )
+            
+        # Converte o array em uma string única
+        final_message = "\n".join(message_lines)
+        return final_message
+    return ""
         
