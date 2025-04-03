@@ -8,9 +8,9 @@ class RoundRequestDTO(BaseModel):
     player2Parameters: List[Optional[str]] = Field(..., description="Parâmetros para a função do jogador 2")
 
 class RoundResponseDTO(BaseModel):
-    player1Choice: str = Field(..., description="Escolha feita pelo jogador 1")
-    player2Choice: str = Field(..., description="Escolha feita pelo jogador 2")
+    player1Choice: Optional[str] = Field(None, description="Escolha feita pelo jogador 1")
+    player2Choice: Optional[str] = Field(None, description="Escolha feita pelo jogador 2")
 
     @classmethod
-    def create(cls, player1_choice: str, player2_choice: str):
+    def create(cls, player1_choice: Optional[str], player2_choice: Optional[str]):
         return cls(player1Choice=player1_choice, player2Choice=player2_choice)
