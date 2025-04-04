@@ -35,6 +35,14 @@ class ValidateService:
         if malicious_errors:
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
         
+        # 4 Validação: Executa uma bateria de testes
+        execution_errors = self.validate_execution(code, data.assistantStyle)
+        if execution_errors:
+            resposta_dict_execution = json.loads(execution_errors)
+            thought = resposta_dict_execution["pensamento"]
+            answer = resposta_dict_execution["resposta"]
+            return ValidateResponse.create(valid=False, answer=answer, thought=thought)
+        
         return ValidateResponse.create(valid=True, answer="aceita", thought="") # Passou em todas as validações
 
     # service -> Feedback
@@ -378,6 +386,38 @@ class ValidateService:
             return answer
         except Exception as e:
             print(f"Erro ao chamar a API da OpenAI: {e}")
+    
+    def validate_execution(self, code: str, assistantStyle: str) -> str:
+        local_env = {}
+        exec(code, {}, local_env)
+        strategy_function = local_env["strategy"]
+        results = self.run_outputs_tests(strategy_function, assistantStyle)
+        return results
+    
+    def run_outputs_tests(self, code: str, assistantStyle: str) -> str:
+        test_inputs = [
+        ("pedra", "pedra", "papel", "papel", "tesoura", "tesoura"),
+        ("pedra", "papel", "tesoura", "pedra", "papel", "tesoura"),
+        ("pedra", None, "papel", "papel", None, "tesoura"),
+        ("pedra", None, None, "papel", None, None),
+        ("papel", "papel", "pedra", "tesoura", "tesoura", "pedra"),
+        ("tesoura", "tesoura", "papel", "papel", "pedra", "pedra"),
+        ("pedra", "papel", None, "papel", "tesoura", None),
+        (None, "tesoura", "papel", None, "papel", "papel"),
+        ("papel", "papel", "tesoura", "tesoura", "pedra", "pedra"),
+        ("papel", None, "tesoura", "pedra", "papel", None),
+        ]
+
+        for i, test_case in enumerate(test_inputs):
+            input_data = {"card1": test_case[0], "card2": test_case[1], "card3": test_case[2], 
+                        "opponentCard1": test_case[3], "opponentCard2": test_case[4], "opponentCard3": test_case[5],
+            }
+            try:
+                output = code(*test_case)
+            except Exception as err:
+                llm_answer = self.feedback_sintaxe_openai(code, err, assistantStyle)
+                return llm_answer
+        return ""
 
 def check_for_malicious_code_in_tree(tree: ast.AST) -> str:
     """
