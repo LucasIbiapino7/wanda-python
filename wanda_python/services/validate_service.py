@@ -57,8 +57,8 @@ class ValidateService:
     # service -> Feedback
     async def feedback(self, data: ValidateRequest) -> ValidateResponse:
         code = data.code # Pega a função
-        # 1 Validação: Sintexe e indentação
-        response_validate = self.validate_sintaxe_and_indentation(code, data.assistantStyle)
+        # 1 Validação: Sintaxe e indentação
+        response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
         if response_validate:
             resposta_dict = json.loads(response_validate)
             thought = resposta_dict["pensamento"]
@@ -67,12 +67,12 @@ class ValidateService:
         
         tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
         # 2 Validação: Assinatura e argumentos
-        response_validate = self.validate_signature_and_parameters(tree, data.assistantStyle)
+        response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle)
         if response_validate:
             return ValidateResponse.create(valid=False, answer=response_validate, thought="")
 
         # 3 Validação: Verificando comandos maliciosos
-        malicious_errors = check_for_malicious_code_in_tree(tree)
+        malicious_errors = self.malicious_checker.validate(tree)
         if malicious_errors:
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
 
