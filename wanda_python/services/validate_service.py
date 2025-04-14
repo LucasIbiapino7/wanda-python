@@ -82,3 +82,32 @@ class ValidateService:
         resposta_dict = json.loads(semantic_feedback)
 
         return ValidateResponse.create(valid=True, answer=resposta_dict["resposta"], thought=resposta_dict["pensamento"]) # Cria e Retorna o DTO
+    
+    async def run (self, data: ValidateRequest) -> ValidateResponse:
+
+        code = data.code
+
+        response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
+        if response_validate:
+            resposta_dict = json.loads(response_validate)
+            thought = resposta_dict["pensamento"]
+            answer = resposta_dict["resposta"]
+            return ValidateResponse.create(valid=False, answer=answer, thought=thought)
+        
+        tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
+        # 2 Validação: Assinatura e argumentos
+        response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle, data.functionName)
+        if response_validate:
+            return ValidateResponse.create(valid=False, answer=response_validate, thought="")
+
+        # 3 Validação: Verificando comandos maliciosos
+        malicious_errors = self.malicious_checker.validate(tree)
+        if malicious_errors:
+            return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
+
+        # 4 Chama a função que vai rodar os testes
+        feedback_tests = self.execution_validator.feedback_tests(code, data.assistantStyle, data.functionName, self.openai_api_key)
+        resposta_dict = json.loads(feedback_tests)
+
+        return ValidateResponse.create(valid=True, answer=resposta_dict["resposta"], thought=resposta_dict["pensamento"])
+    

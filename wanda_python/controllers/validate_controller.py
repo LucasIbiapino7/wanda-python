@@ -24,6 +24,11 @@ async def validate(data: ValidateRequest, service: ValidateService = Depends(get
     # Chama o método do serviço
     return await service.validate(data)
 
+@router.post("/run", response_model=ValidateResponse)
+async def validate(data: ValidateRequest, service: ValidateService = Depends(get_validate_service)):
+    # Chama o método do serviço
+    return await service.run(data)
+
 @router.post("/round", response_model=RoundResponseDTO)
 async def round(data: RoundRequestDTO, service: RoundService = Depends(get_round_service)):
     return await service.round_choices(data)
