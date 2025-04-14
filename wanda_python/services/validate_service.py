@@ -68,7 +68,7 @@ class ValidateService:
         
         tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
         # 2 Validação: Assinatura e argumentos
-        response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle)
+        response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle, data.functionName)
         if response_validate:
             return ValidateResponse.create(valid=False, answer=response_validate, thought="")
 
@@ -78,7 +78,7 @@ class ValidateService:
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
 
         # Caso passe em todas as validações, faz uma validação da semântica
-        semantic_feedback = self.semantics_validator.validator(code, tree, data.assistantStyle, self.openai_api_key)
+        semantic_feedback = self.semantics_validator.validator(code, tree, data.assistantStyle, self.openai_api_key, data.functionName)
         resposta_dict = json.loads(semantic_feedback)
 
         return ValidateResponse.create(valid=True, answer=resposta_dict["resposta"], thought=resposta_dict["pensamento"]) # Cria e Retorna o DTO

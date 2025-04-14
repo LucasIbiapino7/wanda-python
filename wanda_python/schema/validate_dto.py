@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 class ValidateRequest(BaseModel):
     code: str = Field(..., description="Função enviada pelo aluno")
     assistantStyle: str = Field(..., description="estilo do agente")
+    functionName: str = Field(..., description="qual função está sendo analisada")
 
 class ValidateResponse(BaseModel):
     valid: bool # indica se a validação foi bem sucedida
