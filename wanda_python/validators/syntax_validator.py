@@ -37,10 +37,10 @@ class SyntaxValidator:
         Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
         Não apresente o código corrigido por completo. Ao invés disso, explique o que houve e como corrigir, 
         dando pistas específicas, mas sem reescrever todo o código.
-        complete o json abaixo:
+        sempre complete o json abaixo:
         {{
-        "pensamento": String,
-        "resposta": String
+            "pensamento": String,
+            "resposta": String
         }}
         """
 
@@ -64,10 +64,10 @@ class SyntaxValidator:
         Dê uma pista para corrigir, mas de forma sucinta.
         Não apresente o código corrigido.
         
-        complete o json abaixo:
+        sempre complete o json abaixo:
         {{
-        "pensamento": String,
-        "resposta": String
+            "pensamento": String,
+            "resposta": String
         }}
         """
 
@@ -89,10 +89,10 @@ class SyntaxValidator:
         Especifique a linha onde o erro aconteceu.
         O snippet deve conter apenas a correção da linha onde ocorreu o código.
         
-        complete o json abaixo:
+        sempre complete o json abaixo:
         {{
-        "pensamento": String,
-        "resposta": String
+            "pensamento": String,
+            "resposta": String
         }}
         """
 
