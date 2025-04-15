@@ -16,7 +16,7 @@ class SemanticsValidator:
 
     def validate_semantics_jokenpo1(self, code: str, tree: ast.AST, assistantStyle: str, openai_api_key: str) -> str:
         """
-        Validação semântica para jokenpo1. Utiliza os prompts já existentes.
+        Validação semântica para jokenpo1.
         """
         client = openai.OpenAI(api_key=openai_api_key)
 
@@ -33,13 +33,16 @@ class SemanticsValidator:
             if isinstance(node, ast.Name) and node.id in expected_args and isinstance(node.ctx, ast.Load):
                 used_params.add(node.id)
 
-        # Definir os prompts para jokenpo1 (baseados nos atuais)
+        # Definir os prompts para jokenpo1
         if assistantStyle == "VERBOSE":
             prompt = f"""
             Você é um assistente virtual de programação Python integrado à plataforma Wanda,
             um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código e você está responsável por analisar a funçao 1.
-            Por padrão, a função strategy deve utilizar os parâmetros: (card1, card2, card3), mesmo que apenas alguns sejam usados na prática.
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código e você está 
+            responsável por analisar a primeira funação do aluno, respossável por escolher a carta que ele vai 
+            jogar no primeiro round.
+            Por padrão, a função que voce está analisando se chama strategy e tem como
+            parâmetros: (card1, card2, card3), e que podem ser utilizados para melhorar a estratégia da escolha da carta jogada pelo aluno.
 
             O código do aluno:
             {code}
@@ -48,9 +51,9 @@ class SemanticsValidator:
             {used_params}
 
             Utilizando esse código e os parâmetros apresentados, explique de forma amigável e detalhada quantos 
-            parâmetros foram efetivamente usados e se há espaço para melhorar o uso deles.
+            parâmetros foram efetivamente usados e como isso afeta na na escolha da sua carta no primeiro round.
 
-            Sempre Complete o JSON:
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -58,7 +61,13 @@ class SemanticsValidator:
         """
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
-            Você é um assistente virtual para iniciantes em Python na plataforma Wanda.
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código e você está 
+            responsável por analisar a primeira funação do aluno, respossável por escolher a carta que ele vai 
+            jogar no primeiro round.
+            Por padrão, a função que voce está analisando se chama strategy e tem como
+            parâmetros: (card1, card2, card3), e que podem ser utilizados para melhorar a estratégia da escolha da carta jogada pelo aluno.
             O código do aluno:
             {code}
 
@@ -66,7 +75,7 @@ class SemanticsValidator:
             {used_params}
 
             Explique de forma extremamente direta quantos parâmetros foram usados.
-            Sempre Complete o JSON:
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -74,15 +83,20 @@ class SemanticsValidator:
             """
         else:  # INTERMEDIATE
             prompt = f"""
-            Você é um assistente virtual de programação Python integrado à plataforma Wanda.
-            O código do aluno:
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código e você está 
+            responsável por analisar a primeira funação do aluno, respossável por escolher a carta que ele vai 
+            jogar no primeiro round.
+            Por padrão, a função que voce está analisando se chama strategy e tem como
+            parâmetros: (card1, card2, card3), e que podem ser utilizados para melhorar a estratégia da escolha da carta jogada pelo aluno.
             {code}
 
             Parâmetros utilizados:
             {used_params}
 
             Forneça uma análise direta, mas completa, sobre os parâmetros utilizados, indicando se há possibilidade de melhoria.
-            Sempre Complete o JSON:
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -113,7 +127,7 @@ class SemanticsValidator:
                 strategy_function = node
                 break
 
-        expected_args = {"card1", "card2", "card3", "opponentCard1", "opponentCard2", "opponentCard3"}
+        expected_args = {"card1", "card2", "opponentCard1", "opponentCard2"}
         used_params = set()
         for node in ast.walk(strategy_function):
             if isinstance(node, ast.Name) and node.id in expected_args and isinstance(node.ctx, ast.Load):

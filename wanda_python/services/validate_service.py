@@ -66,7 +66,7 @@ class ValidateService:
             answer = resposta_dict["resposta"]
             return ValidateResponse.create(valid=False, answer=answer, thought=thought)
         
-        tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
+        tree = ast.parse(code) # Vai ser usada nas próximas duas validações
         # 2 Validação: Assinatura e argumentos
         response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle, data.functionName)
         if response_validate:

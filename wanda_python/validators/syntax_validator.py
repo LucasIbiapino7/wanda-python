@@ -20,7 +20,8 @@ class SyntaxValidator:
 
         prompt_verbose = f"""
         Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python.
+        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+        jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
         
         O código do aluno:
         {code}
@@ -46,7 +47,8 @@ class SyntaxValidator:
 
         prompt_succint = f"""
         Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python.
+        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+        jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
 
         O código do aluno:
         {code}
@@ -73,7 +75,8 @@ class SyntaxValidator:
 
         prompt_intermediary = f"""
         Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python.
+        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+        jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
         
         O código do aluno:
         {code}
