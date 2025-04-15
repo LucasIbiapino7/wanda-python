@@ -91,8 +91,8 @@ class ExecutionValidator:
                 if output not in ("pedra", "papel", "tesoura"):
                     results.append({
                         "output": output,
-                        "valid": False,
-                        "error": "Retorno fora do esperado (não é pedra/papel/tesoura)"
+                        "valid": True,
+                        "error": "Retorno fora do esperado pelo jogo (não é pedra/papel/tesoura)"
                     })
                 else:
                     results.append({
@@ -111,12 +111,28 @@ class ExecutionValidator:
         
         if assistantStyle == "VERBOSE":
             prompt = f"""
-            [INSIRA O PROMPT VERBOSE PARA JOKENPO1 AQUI]
-            Resultados dos testes para jokenpo1:
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
+            dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
+            e os outputs para possíveis cenários do jogo.
+            O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
+            entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
+            da lógica do aluno. Após a análise, pode sugerir que o aluno
+            submeta a função ou possíveis melhorias.
+
+            resultados dos testes:
+
             {results}
+
+            Utilizando o resultado acima e usando a técnica CoT
+            Analise as saídas do aluno e explique para ele os resultados obtidos.
+
+            Gere a resposta seguindo as seguintes regras:
+            Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+            Use uma linguagem leve e não muito técnica.
             
-            Utilize a técnica CoT para fornecer uma análise direta e amigável.
-            Complete o JSON abaixo:
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -124,12 +140,28 @@ class ExecutionValidator:
             """
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
-            [INSIRA O PROMPT SUCCINCT PARA JOKENPO1 AQUI]
-            Resultados:
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
+            dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
+            e os outputs para possíveis cenários do jogo.
+            O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
+            entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
+            da lógica do aluno. Após a análise, pode sugerir que o aluno
+            submeta a função ou possíveis melhorias.
+
+            resultados dos testes:
+
             {results}
+
+            Utilizando o resultado acima e usando a técnica CoT
+            Analise as saídas do aluno e explique para ele os resultados obtidos.
+
+            Gere a resposta seguindo as seguintes regras:
+            Seja extremamente direto. Nada de explicações longas.
+            Sem introduções ou despedidas.
             
-            Seja extremamente direto, sem introduções nem despedidas.
-            Complete o JSON:
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -137,12 +169,27 @@ class ExecutionValidator:
             """
         else:  # INTERMEDIATE
             prompt = f"""
-            [INSIRA O PROMPT INTERMEDIARY PARA JOKENPO1 AQUI]
-            Resultados dos testes:
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
+            dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
+            e os outputs para possíveis cenários do jogo.
+            O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
+            entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
+            da lógica do aluno. Após a análise, pode sugerir que o aluno
+            submeta a função ou possíveis melhorias.
+
+            resultados dos testes:
+
             {results}
+
+            Utilizando o resultado acima e usando a técnica CoT
+            Analise as saídas do aluno e explique para ele os resultados obtidos.
+
+            Gere a resposta seguindo as seguintes regras:
+            Forneça uma resposta equilibrada, não seja muito verboso e nem muito direto.
             
-            Forneça uma análise equilibrada sobre os outputs.
-            Complete o JSON:
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
