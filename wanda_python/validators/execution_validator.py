@@ -14,6 +14,8 @@ class ExecutionValidator:
         else:
             raise ValueError("Tipo de função desconhecido. Use 'jokenpo1' ou 'jokenpo2'.")
     
+
+    
     def feedback_tests_jokenpo1(self, code: str, assistantStyle: str, openai_api_key: str) -> str:
         """
         Executa os testes para a função jokenpo1, onde a assinatura é:
@@ -59,6 +61,8 @@ class ExecutionValidator:
         tests_feedback = self.feedback_outputs_tests_jokenpo1(results, openai_api_key, assistantStyle)
         return tests_feedback
 
+
+
     def feedback_tests_jokenpo2(self, code: str, assistantStyle: str, openai_api_key: str) -> str:
         """
         Executa os testes para a função jokenpo2, onde a assinatura é:
@@ -103,9 +107,11 @@ class ExecutionValidator:
                 llm_answer = self.error_execution(code, err, openai_api_key)
                 return llm_answer
         
-        tests_feedback = self.feedback_outputs_tests_jokenpo2(results, openai_api_key, assistantStyle)
+        tests_feedback = self.feedback_outputs_tests_jokenpo1(results, openai_api_key, assistantStyle)
         return tests_feedback
     
+
+
     def feedback_outputs_tests_jokenpo1(self, results, openai_api_key: str, assistantStyle: str) -> str:
         client = openai.OpenAI(api_key=openai_api_key)
         
@@ -207,6 +213,8 @@ class ExecutionValidator:
             print(f"Erro ao chamar a API da OpenAI: {e}")
             return ""
 
+
+
     # Função específica para processar os outputs dos testes para jokenpo2
     def feedback_outputs_tests_jokenpo2(self, results, openai_api_key: str, assistantStyle: str) -> str:
         client = openai.OpenAI(api_key=openai_api_key)
@@ -263,78 +271,167 @@ class ExecutionValidator:
             return ""
 
 
-    def validator(self, code: str, assistantStyle: str) -> str:
+
+    def validator(self, code: str, assistantStyle: str, function_type: str, openai_api_key: str) -> str:
+        """
+        Recebe o código do aluno, o estilo do agente, o tipo de função (ex.: "jokenpo1" ou "jokenpo2")
+        e a chave da API da OpenAI. Executa o código para obter a função 'strategy' e chama os testes
+        correspondentes ao tipo da função.
+        """
         local_env = {}
         exec(code, {}, local_env)
         strategy_function = local_env["strategy"]
-        results = self.run_outputs_tests(strategy_function, assistantStyle)
+        if function_type == "jokenpo1":
+            results = self.run_outputs_tests_jokenpo1(code, strategy_function, openai_api_key, assistantStyle)
+        elif function_type == "jokenpo2":
+            results = self.run_outputs_tests_jokenpo2(code, strategy_function, openai_api_key, assistantStyle)
+        else:
+            results = "Tipo de função inválido."
         return results
     
-    def run_outputs_tests(self, code: str, assistantStyle: str) -> str:
+
+
+    def run_outputs_tests_jokenpo1(self, code: str, strategy_function: callable, openai_api_key: str, assistantStyle: str) -> str:
+        """
+        Executa uma série de testes para a função do tipo jokenpo1.
+        Caso ocorra algum erro durante a execução de um teste, chama error_execution para obter
+        uma explicação do erro.
+        """
         test_inputs = [
-        ("pedra", "pedra", "papel", "papel", "tesoura", "tesoura"),
-        ("pedra", "papel", "tesoura", "pedra", "papel", "tesoura"),
-        ("pedra", None, "papel", "papel", None, "tesoura"),
-        ("pedra", None, None, "papel", None, None),
-        ("papel", "papel", "pedra", "tesoura", "tesoura", "pedra"),
-        ("tesoura", "tesoura", "papel", "papel", "pedra", "pedra"),
-        ("pedra", "papel", None, "papel", "tesoura", None),
-        (None, "tesoura", "papel", None, "papel", "papel"),
-        ("papel", "papel", "tesoura", "tesoura", "pedra", "pedra"),
-        ("papel", None, "tesoura", "pedra", "papel", None),
+            ("pedra", "pedra", "papel"),
+            ("pedra", "papel", "tesoura"),
+            ("papel", "papel", "pedra"),
+            ("tesoura", "tesoura", "papel"),
+            ("pedra", "papel", "papel"),
+            ("tesoura", "papel", "tesoura"),
+            ("papel", "pedra", "pedra"),
+            ("tesoura", "papel", "papel"),
+            ("papel", "tesoura", "tesoura"),
+            ("pedra", "tesoura", "pedra"),
         ]
 
         for i, test_case in enumerate(test_inputs):
-            input_data = {"card1": test_case[0], "card2": test_case[1], "card3": test_case[2], 
-                        "opponentCard1": test_case[3], "opponentCard2": test_case[4], "opponentCard3": test_case[5],
+            # Input_data é opcional, mas pode ser usado para log/debug
+            input_data = {
+                "card1": test_case[0],
+                "card2": test_case[1],
+                "card3": test_case[2],
             }
             try:
-                output = code(*test_case)
+                output = strategy_function(*test_case)
             except Exception as err:
-                llm_answer = self.error_execution(code, err, assistantStyle)
+                llm_answer = self.error_execution(code, err, openai_api_key, assistantStyle)
                 return llm_answer
         return ""
     
-    def error_execution(self, code: str, erro: str, openai_api_key: str) -> str:
-        client = openai.OpenAI(api_key=openai_api_key)
-        prompt = f"""
-        Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python.
-        O código do aluno:
 
-        {code}
-
-        Erro do python durante a execução do código:
-
-        {erro}
-
-        Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-        explique de forma extremamente o motivo do erro de execução. 
-
-        Gere a resposta seguindo as seguintes regras:
-        Seja extremamente direto. Nada de explicações longas.
-        Sem introduções ou despedidas.
-        Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
-
-        complete o json abaixo:
-        {{
-            "pensamento": String,
-            "resposta": String
-        }}
+    
+    def run_outputs_tests_jokenpo2(self, code: str, strategy_function: callable, openai_api_key: str, assistantStyle: str) -> str:
         """
+        Implementação placeholder para testes do tipo jokenpo2.
+        Caso haja uma lógica diferente para essa variante, implemente-a aqui.
+        """
+        # Exemplo simples (pode ser ajustado conforme as necessidades)
+        test_inputs = [
+            ("pedra", "papel", "tesoura", "pedra"),
+            ("papel", "pedra", "papel", "tesoura"),
+            ("tesoura", "tesoura", "pedra", "papel"),
+            ("pedra", "pedra", "papel", "tesoura"),
+            ("papel", "papel", "pedra", "tesoura"),
+            ("tesoura", "tesoura", "pedra", "papel"),
+            ("pedra", "papel", "pedra", "tesoura"), 
+            ("pedra", "tesoura", "papel", "papel"),
+            ("papel", "tesoura", "pedra", "pedra"),
+            ("pedra", "tesoura", "tesoura", "papel")
+        ]
 
+        for i, test_case in enumerate(test_inputs):
+            input_data = {
+                "card1": test_case[0],
+                "card2": test_case[1],
+                "opponentCard1": test_case[2],
+                "opponentCard2": test_case[3],
+            }
+            try:
+                output = strategy_function(*test_case)
+            except Exception as err:
+                llm_answer = self.error_execution(code, err, openai_api_key, assistantStyle)
+                return llm_answer
+        return ""
+    
+
+
+    def error_execution(self, code: str, erro: Exception, openai_api_key: str, assistantStyle: str) -> str:
+        client = openai.OpenAI(api_key=openai_api_key)
+        
+        if assistantStyle == "VERBOSE":
+            prompt = f"""
+            [VERBOSE] Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes. No contexto do jogo Jokenpo, o aluno escreveu uma função
+            chamada strategy para definir suas jogadas. Após executar os testes, ocorreu o seguinte erro:
+            
+            Código do aluno:
+            {code}
+            
+            Erro durante a execução:
+            {erro}
+            
+            Utilizando a técnica CoT, explique de forma extremamente direta e amigável o motivo desse erro,
+            apontando a linha onde ocorreu e sugerindo possíveis correções.
+            
+            Complete o JSON no formato abaixo:
+            {{
+                "pensamento": String,
+                "resposta": String
+            }}
+            """
+        elif assistantStyle == "SUCCINCT":
+            prompt = f"""
+            [SUCCINCT] Você é um assistente virtual de programação Python integrado à plataforma Wanda.
+            Analise o código do aluno e o erro ocorrido durante a execução (relacionado ao jogo Jokenpo).
+            
+            Código do aluno:
+            {code}
+            
+            Erro:
+            {erro}
+            
+            Explique o motivo do erro de maneira extremamente direta e sem rodeios.
+            
+            Complete o JSON no formato abaixo:
+            {{
+                "pensamento": String,
+                "resposta": String
+            }}
+            """
+        else:  # INTERMEDIATE
+            prompt = f"""
+            [INTERMEDIATE] Você é um assistente virtual de programação Python integrado à plataforma Wanda.
+            Analise o código do aluno e o erro encontrado durante a execução (no contexto do jogo Jokenpo),
+            fornecendo uma explicação equilibrada entre detalhes e objetividade.
+            
+            Código do aluno:
+            {code}
+            
+            Erro:
+            {erro}
+            
+            Explique o erro e sugira melhorias de forma clara, mas sem ser excessivamente técnico.
+            
+            Complete o JSON no formato abaixo:
+            {{
+                "pensamento": String,
+                "resposta": String
+            }}
+            """
         try:
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=300 
             )
-            
             answer = response.choices[0].message.content
-            resposta_dict = json.loads(answer)
-            print("Resposta da IA:")
-            print("Pensamento: " + resposta_dict["pensamento"])
-            print("Resposta: " + resposta_dict["resposta"])
-        
+            return answer
         except Exception as e:
             print(f"Erro ao chamar a API da OpenAI: {e}")
+            return ""
