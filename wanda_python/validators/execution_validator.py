@@ -15,7 +15,7 @@ class ExecutionValidator:
             raise ValueError("Tipo de função desconhecido. Use 'jokenpo1' ou 'jokenpo2'.")
     
 
-    
+
     def feedback_tests_jokenpo1(self, code: str, assistantStyle: str, openai_api_key: str) -> str:
         """
         Executa os testes para a função jokenpo1, onde a assinatura é:
@@ -366,20 +366,25 @@ class ExecutionValidator:
         
         if assistantStyle == "VERBOSE":
             prompt = f"""
-            [VERBOSE] Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-            um sistema voltado para alunos iniciantes. No contexto do jogo Jokenpo, o aluno escreveu uma função
-            chamada strategy para definir suas jogadas. Após executar os testes, ocorreu o seguinte erro:
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
             
-            Código do aluno:
+            O código do aluno:
             {code}
-            
-            Erro durante a execução:
+
+            Erro do python durante a execução do código:
             {erro}
             
-            Utilizando a técnica CoT, explique de forma extremamente direta e amigável o motivo desse erro,
-            apontando a linha onde ocorreu e sugerindo possíveis correções.
+            Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+            explique para o aluno o motivo do erro.
+
+            Gere a resposta seguindo as seguintes regras:
+            Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+            Use uma linguagem leve e não muito técnica.
+            Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
             
-            Complete o JSON no formato abaixo:
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -387,18 +392,27 @@ class ExecutionValidator:
             """
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
-            [SUCCINCT] Você é um assistente virtual de programação Python integrado à plataforma Wanda.
-            Analise o código do aluno e o erro ocorrido durante a execução (relacionado ao jogo Jokenpo).
-            
-            Código do aluno:
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+
+            O código do aluno:
             {code}
-            
-            Erro:
+
+            Erro do python durante a execução do código:
             {erro}
+
+            Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+            explique para o aluno o motivo do erro.
             
-            Explique o motivo do erro de maneira extremamente direta e sem rodeios.
+            Gere a resposta seguindo as seguintes regras:
+            Seja extremamente direto. Nada de explicações longas.
+            Sem introduções ou despedidas.
+            Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
+            Dê uma pista para corrigir, mas de forma sucinta.
+            Não apresente o código corrigido.
             
-            Complete o JSON no formato abaixo:
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -406,19 +420,25 @@ class ExecutionValidator:
             """
         else:  # INTERMEDIATE
             prompt = f"""
-            [INTERMEDIATE] Você é um assistente virtual de programação Python integrado à plataforma Wanda.
-            Analise o código do aluno e o erro encontrado durante a execução (no contexto do jogo Jokenpo),
-            fornecendo uma explicação equilibrada entre detalhes e objetividade.
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
             
-            Código do aluno:
+            O código do aluno:
             {code}
             
-            Erro:
+            Erro do python durante a execução do código:
             {erro}
             
-            Explique o erro e sugira melhorias de forma clara, mas sem ser excessivamente técnico.
+            Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+            explique para o aluno o motivo do erro.
             
-            Complete o JSON no formato abaixo:
+            Gere a resposta seguindo as seguintes regras:
+            Utilize snippets de código para mostrar o erro e como corrigir.
+            Especifique a linha onde o erro aconteceu.
+            O snippet deve conter apenas a correção da linha onde ocorreu o código.
+            
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
