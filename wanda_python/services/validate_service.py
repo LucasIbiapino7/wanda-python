@@ -28,9 +28,8 @@ class ValidateService:
         # 1 Validação: Sintexe e indentação
         response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
         if response_validate:
-            resposta_dict = json.loads(response_validate)
-            thought = resposta_dict["pensamento"]
-            answer = resposta_dict["resposta"]
+            thought = response_validate["pensamento"]
+            answer = response_validate["resposta"]
             return ValidateResponse.create(valid=False, answer=answer, thought=thought)
         
         tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
@@ -61,9 +60,8 @@ class ValidateService:
         # 1 Validação: Sintaxe e indentação
         response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
         if response_validate:
-            resposta_dict = json.loads(response_validate)
-            thought = resposta_dict["pensamento"]
-            answer = resposta_dict["resposta"]
+            thought = response_validate["pensamento"]
+            answer = response_validate["resposta"]
             return ValidateResponse.create(valid=False, answer=answer, thought=thought)
         
         tree = ast.parse(code) # Vai ser usada nas próximas duas validações
@@ -84,15 +82,15 @@ class ValidateService:
 
         return ValidateResponse.create(valid=True, answer=answer, thought=thought) 
     
+    # Run 
     async def run (self, data: ValidateRequest) -> ValidateResponse:
 
         code = data.code
 
         response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
         if response_validate:
-            resposta_dict = json.loads(response_validate)
-            thought = resposta_dict["pensamento"]
-            answer = resposta_dict["resposta"]
+            thought = response_validate["pensamento"]
+            answer = response_validate["resposta"]
             return ValidateResponse.create(valid=False, answer=answer, thought=thought)
         
         tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)

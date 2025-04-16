@@ -1,8 +1,39 @@
 import openai
+import json
+from openai import OpenAIError
+
+def ask_openai(prompt: str, api_key: str) -> dict:
+    """
+    Centraliza a chamada à API OpenAI para respostas JSON.
+    Retorna sempre um dict com as chaves 'pensamento' e 'resposta'.
+    """
+    client = openai.OpenAI(api_key=api_key)
+
+    # Mensagem de sistema que garante saída exclusiva em JSON
+    system_msg = {
+        "role": "system",
+        "content": (
+            'Responda EXCLUSIVAMENTE com um objeto JSON contendo '  
+            'as chaves "pensamento" e "resposta". Nada fora das chaves.'
+        )
+    }
+
+    try:
+        answer = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[system_msg, {"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=300,
+        )
+        return json.loads(answer.choices[0].message.content)
+
+    except OpenAIError as e:
+        print(f"Erro na API OpenAI: {e}")
+        return {"pensamento": "", "resposta": ""}
 
 class SyntaxValidator:
 
-    def validate(self, code: str, assistantStyle: str, openai_api_key: str) -> str:
+    def validate(self, code: str, assistantStyle: str, openai_api_key: str) -> dict:
         """
         Valida a sintaxe e a indentação do código.
         Retorna uma string vazia se não houver erros, 
@@ -15,7 +46,7 @@ class SyntaxValidator:
             llm_answer = self.feedback_sintaxe_openai(code, err, assistantStyle, openai_api_key) # Chama a função que usa a IA
             return llm_answer # Resposta da LLM
     
-    def feedback_sintaxe_openai(self, code: str, erro: str, assistantStyle: str, openai_api_key: str) -> str:
+    def feedback_sintaxe_openai(self, code: str, erro: str, assistantStyle: str, openai_api_key: str) -> dict:
         client = openai.OpenAI(api_key=openai_api_key)
 
         prompt_verbose = f"""
@@ -107,14 +138,5 @@ complete o JSON abaixo:
         else:
             prompt = prompt_intermediary
 
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300 
-            )
-            
-            answer = response.choices[0].message.content
-            return answer
-        except Exception as e:
-            print(f"Erro ao chamar a API da OpenAI: {e}")
+        answer = ask_openai(prompt, openai_api_key)
+        return answer
