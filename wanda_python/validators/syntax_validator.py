@@ -39,7 +39,7 @@ Sempre identifique a linha do erro na explicação (ex: “o problema está na l
 Não apresente o código corrigido por completo. Ao invés disso, explique o que houve e como corrigir, 
 dando pistas específicas, mas sem reescrever todo o código.
 
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -67,7 +67,7 @@ Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
 Dê uma pista para corrigir, mas de forma sucinta.
 Não apresente o código corrigido.
         
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -93,7 +93,7 @@ Utilize snippets de código para mostrar o erro e como corrigir.
 Especifique a linha onde o erro aconteceu.
 O snippet deve conter apenas a correção da linha onde ocorreu o código.
         
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String

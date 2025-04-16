@@ -138,7 +138,7 @@ Gere a resposta seguindo as seguintes regras:
 Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
 Use uma linguagem leve e não muito técnica.
             
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -167,7 +167,7 @@ Gere a resposta seguindo as seguintes regras:
 Seja extremamente direto. Nada de explicações longas.
 Sem introduções ou despedidas.
             
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -195,7 +195,7 @@ Analise as saídas do aluno e explique para ele os resultados obtidos.
 Gere a resposta seguindo as seguintes regras:
 Forneça uma resposta equilibrada, não seja muito verboso e nem muito direto.
             
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -326,7 +326,7 @@ Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno
 Use uma linguagem leve e não muito técnica.
 Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
             
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -354,7 +354,7 @@ Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
 Dê uma pista para corrigir, mas de forma sucinta.
 Não apresente o código corrigido.
             
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -380,7 +380,7 @@ Utilize snippets de código para mostrar o erro e como corrigir.
 Especifique a linha onde o erro aconteceu.
 O snippet deve conter apenas a correção da linha onde ocorreu o código.
             
-sempre gere como saída um JSON no formato abaixo:
+complete o JSON abaixo:
 {{
     "pensamento": String,
     "resposta": String

@@ -79,9 +79,10 @@ class ValidateService:
 
         # Caso passe em todas as validações, faz uma validação da semântica
         semantic_feedback = self.semantics_validator.validator(code, tree, data.assistantStyle, self.openai_api_key, data.functionName)
-        resposta_dict = json.loads(semantic_feedback)
+        thought = semantic_feedback["pensamento"]
+        answer = semantic_feedback["resposta"]
 
-        return ValidateResponse.create(valid=True, answer=resposta_dict["resposta"], thought=resposta_dict["pensamento"]) # Cria e Retorna o DTO
+        return ValidateResponse.create(valid=True, answer=answer, thought=thought) 
     
     async def run (self, data: ValidateRequest) -> ValidateResponse:
 

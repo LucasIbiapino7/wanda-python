@@ -1,26 +1,63 @@
 import openai
 import ast
+import json
+from openai import OpenAIError
+
+
+def ask_openai(prompt: str, api_key: str) -> dict:
+    """
+    Centraliza a chamada à API OpenAI para respostas JSON.
+    Retorna sempre um dict com as chaves 'pensamento' e 'resposta'.
+    """
+    client = openai.OpenAI(api_key=api_key)
+
+    # Mensagem de sistema que garante saída exclusiva em JSON
+    system_msg = {
+        "role": "system",
+        "content": (
+            'Responda EXCLUSIVAMENTE com um objeto JSON contendo '  
+            'as chaves "pensamento" e "resposta". Nada fora das chaves.'
+        )
+    }
+
+    try:
+        answer = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[system_msg, {"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=300,
+        )
+        return json.loads(answer.choices[0].message.content)
+
+    except OpenAIError as e:
+        print(f"Erro na API OpenAI: {e}")
+        return {"pensamento": "", "resposta": ""}
+
 
 class SemanticsValidator:
-    def validator(self, code: str, tree: ast.AST, assistantStyle: str, openai_api_key: str, functionType: str) -> str:
+    def validator(self, code: str, tree: ast.AST, assistantStyle: str, openai_api_key: str, functionType: str) -> dict:
         """
-        Método orquestrador que chama o validador específico com base no functionType.
-        functionType: "jokenpo1" ou "jokenpo2"
+        Método orquestrador que chama o validador específico com base em functionType.
+        functionType: "jokenpo1" ou "jokenpo2".
         """
         if functionType == "jokenpo1":
-            return self.validate_semantics_jokenpo1(code, tree, assistantStyle, openai_api_key)
+            return self.validate_semantics_jokenpo1(
+                code, tree, assistantStyle, openai_api_key
+            )
         elif functionType == "jokenpo2":
-            return self.validate_semantics_jokenpo2(code, tree, assistantStyle, openai_api_key)
+            return self.validate_semantics_jokenpo2(
+                code, tree, assistantStyle, openai_api_key
+            )
         else:
-            raise ValueError("Tipo de função não reconhecido. Use 'jokenpo1' ou 'jokenpo2'.")
+            raise ValueError(
+                "Tipo de função não reconhecido. Use 'jokenpo1' ou 'jokenpo2'."
+            )
 
-    def validate_semantics_jokenpo1(self, code: str, tree: ast.AST, assistantStyle: str, openai_api_key: str) -> str:
+    def validate_semantics_jokenpo1(self, code: str, tree: ast.AST, assistantStyle: str, openai_api_key: str) -> dict:
         """
         Validação semântica para jokenpo1.
         """
-        client = openai.OpenAI(api_key=openai_api_key)
-
-        # Encontra a função strategy na árvore AST
+        # Mesma lógica para extrair a função e parâmetros usados
         strategy_function = None
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef) and node.name == "strategy":
@@ -30,10 +67,14 @@ class SemanticsValidator:
         expected_args = {"card1", "card2", "card3"}
         used_params = set()
         for node in ast.walk(strategy_function):
-            if isinstance(node, ast.Name) and node.id in expected_args and isinstance(node.ctx, ast.Load):
+            if (
+                isinstance(node, ast.Name)
+                and node.id in expected_args
+                and isinstance(node.ctx, ast.Load)
+            ):
                 used_params.add(node.id)
 
-        # Definir os prompts para jokenpo1
+        # Montagem dos prompts
         if assistantStyle == "VERBOSE":
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
@@ -84,7 +125,8 @@ sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
     "resposta": String
-}}"""
+}}
+"""
         else:  # INTERMEDIATE
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
@@ -111,24 +153,14 @@ sempre gere como saída um JSON no formato abaixo:
     "resposta": String
 }}
 """
+        # Chama o centralizador que força JSON e faz parsing
+        answer = ask_openai(prompt, openai_api_key)
+        return answer
 
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300 
-            )
-            answer = response.choices[0].message.content
-            return answer
-        except Exception as e:
-            print(f"Erro ao chamar a API da OpenAI: {e}")
-            return ""
-
-    def validate_semantics_jokenpo2(self, code: str, tree: ast.AST, assistantStyle: str, openai_api_key: str) -> str:
+    def validate_semantics_jokenpo2(self, code: str, tree: ast.AST, assistantStyle: str, openai_api_key: str) -> dict:
         """
-        Validação semântica para jokenpo2. Aqui ainda deixam-se placeholders para os novos prompts.
+        Validação semântica para jokenpo2 (mantido igual ao seu código).
         """
-        client = openai.OpenAI(api_key=openai_api_key)
 
         # Encontra a função strategy na árvore AST
         strategy_function = None
@@ -140,10 +172,14 @@ sempre gere como saída um JSON no formato abaixo:
         expected_args = {"card1", "card2", "opponentCard1", "opponentCard2"}
         used_params = set()
         for node in ast.walk(strategy_function):
-            if isinstance(node, ast.Name) and node.id in expected_args and isinstance(node.ctx, ast.Load):
+            if (
+                isinstance(node, ast.Name)
+                and node.id in expected_args
+                and isinstance(node.ctx, ast.Load)
+            ):
                 used_params.add(node.id)
 
-        # prompts da jokenpo2
+        # prompts da jokenpo2 (mantido igual ao seu código)
         if assistantStyle == "VERBOSE":
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
@@ -225,14 +261,5 @@ sempre gere como saída um JSON no formato abaixo:
     "resposta": String
 }}
 """
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300
-            )
-            answer = response.choices[0].message.content
-            return answer
-        except Exception as e:
-            print(f"Erro ao chamar a API da OpenAI: {e}")
-            return ""
+        answer = ask_openai(prompt, openai_api_key)
+        return answer
