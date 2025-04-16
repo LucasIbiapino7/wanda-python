@@ -1,9 +1,40 @@
 import openai
 import json
+from openai import OpenAIError
+
+def ask_openai(prompt: str, api_key: str) -> dict:
+    """
+    Centraliza a chamada à API OpenAI para respostas JSON.
+    Retorna sempre um dict com as chaves 'pensamento' e 'resposta'.
+    """
+    client = openai.OpenAI(api_key=api_key)
+
+    # Mensagem de sistema que garante saída exclusiva em JSON
+    system_msg = {
+        "role": "system",
+        "content": (
+            'Responda EXCLUSIVAMENTE com um objeto JSON contendo '  
+            'as chaves "pensamento" e "resposta". Nada fora das chaves.'
+        )
+    }
+
+    try:
+        answer = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[system_msg, {"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=300,
+        )
+        return json.loads(answer.choices[0].message.content)
+
+    except OpenAIError as e:
+        print(f"Erro na API OpenAI: {e}")
+        return {"pensamento": "", "resposta": ""}
+
 
 class ExecutionValidator:
 
-    def feedback_tests(self, code: str, assistantStyle: str, function_type: str, openai_api_key: str) -> str:
+    def feedback_tests(self, code: str, assistantStyle: str, function_type: str, openai_api_key: str) -> dict:
         """
         com base no type da função (jokenpo1 ou jokenpo2).
         """
@@ -16,7 +47,7 @@ class ExecutionValidator:
     
 
 
-    def feedback_tests_jokenpo1(self, code: str, assistantStyle: str, openai_api_key: str) -> str:
+    def feedback_tests_jokenpo1(self, code: str, assistantStyle: str, openai_api_key: str) -> dict:
         """
         Executa os testes para a função jokenpo1, onde a assinatura é:
           def strategy(card1, card2, card3)
@@ -63,7 +94,7 @@ class ExecutionValidator:
 
 
 
-    def feedback_tests_jokenpo2(self, code: str, assistantStyle: str, openai_api_key: str) -> str:
+    def feedback_tests_jokenpo2(self, code: str, assistantStyle: str, openai_api_key: str) -> dict:
         """
         Executa os testes para a função jokenpo2, onde a assinatura é:
         def strategy(card1, card2, opponentCard1, opponentCard2)
@@ -112,8 +143,7 @@ class ExecutionValidator:
     
 
 
-    def feedback_outputs_tests_jokenpo(self, results, openai_api_key: str, assistantStyle: str) -> str:
-        client = openai.OpenAI(api_key=openai_api_key)
+    def feedback_outputs_tests_jokenpo(self, results, openai_api_key: str, assistantStyle: str) -> dict:
         
         if assistantStyle == "VERBOSE":
             prompt = f"""
@@ -201,20 +231,11 @@ complete o JSON abaixo:
     "resposta": String
 }}
 """
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300 
-            )
-            answer = response.choices[0].message.content
-            return answer
-        except Exception as e:
-            print(f"Erro ao chamar a API da OpenAI: {e}")
-            return ""
+        answer = ask_openai(prompt, openai_api_key)
+        return answer
 
 
-    def validator(self, code: str, assistantStyle: str, function_type: str, openai_api_key: str) -> str:
+    def validator(self, code: str, assistantStyle: str, function_type: str, openai_api_key: str) -> dict:
         """
         Recebe o código do aluno, o estilo do agente, o tipo de função (ex.: "jokenpo1" ou "jokenpo2")
         e a chave da API da OpenAI. Executa o código para obter a função 'strategy' e chama os testes
@@ -233,7 +254,7 @@ complete o JSON abaixo:
     
 
 
-    def run_outputs_tests_jokenpo1(self, code: str, strategy_function: callable, openai_api_key: str, assistantStyle: str) -> str:
+    def run_outputs_tests_jokenpo1(self, code: str, strategy_function: callable, openai_api_key: str, assistantStyle: str) -> dict:
         """
         Executa uma série de testes para a função do tipo jokenpo1.
         Caso ocorra algum erro durante a execução de um teste, chama error_execution para obter
@@ -268,7 +289,7 @@ complete o JSON abaixo:
     
 
     
-    def run_outputs_tests_jokenpo2(self, code: str, strategy_function: callable, openai_api_key: str, assistantStyle: str) -> str:
+    def run_outputs_tests_jokenpo2(self, code: str, strategy_function: callable, openai_api_key: str, assistantStyle: str) -> dict:
         """
         Implementação placeholder para testes do tipo jokenpo2.
         Caso haja uma lógica diferente para essa variante, implemente-a aqui.
@@ -386,14 +407,5 @@ complete o JSON abaixo:
     "resposta": String
 }}
 """
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300 
-            )
-            answer = response.choices[0].message.content
-            return answer
-        except Exception as e:
-            print(f"Erro ao chamar a API da OpenAI: {e}")
-            return ""
+        answer = ask_openai(prompt, openai_api_key)
+        return answer

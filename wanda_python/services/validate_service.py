@@ -47,9 +47,8 @@ class ValidateService:
         # 4 Validação: Executa uma bateria de testes
         execution_errors = self.execution_validator.validator(code, data.assistantStyle, data.functionName, self.openai_api_key)
         if execution_errors:
-            resposta_dict_execution = json.loads(execution_errors)
-            thought = resposta_dict_execution["pensamento"]
-            answer = resposta_dict_execution["resposta"]
+            thought = execution_errors["pensamento"]
+            answer = execution_errors["resposta"]
             return ValidateResponse.create(valid=False, answer=answer, thought=thought)
         
         return ValidateResponse.create(valid=True, answer="aceita", thought="") # Passou em todas as validações
@@ -106,7 +105,6 @@ class ValidateService:
 
         # 4 Chama a função que vai rodar os testes
         feedback_tests = self.execution_validator.feedback_tests(code, data.assistantStyle, data.functionName, self.openai_api_key)
-        resposta_dict = json.loads(feedback_tests)
 
-        return ValidateResponse.create(valid=True, answer=resposta_dict["resposta"], thought=resposta_dict["pensamento"])
+        return ValidateResponse.create(valid=True, answer=feedback_tests["resposta"], thought=feedback_tests["pensamento"])
     

@@ -47,7 +47,6 @@ class SyntaxValidator:
             return llm_answer # Resposta da LLM
     
     def feedback_sintaxe_openai(self, code: str, erro: str, assistantStyle: str, openai_api_key: str) -> dict:
-        client = openai.OpenAI(api_key=openai_api_key)
 
         prompt_verbose = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
