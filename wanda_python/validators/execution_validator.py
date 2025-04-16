@@ -58,7 +58,7 @@ class ExecutionValidator:
                 llm_answer = self.error_execution(code, err, openai_api_key)
                 return llm_answer
         
-        tests_feedback = self.feedback_outputs_tests_jokenpo1(results, openai_api_key, assistantStyle)
+        tests_feedback = self.feedback_outputs_tests_jokenpo(results, openai_api_key, assistantStyle)
         return tests_feedback
 
 
@@ -107,12 +107,12 @@ class ExecutionValidator:
                 llm_answer = self.error_execution(code, err, openai_api_key)
                 return llm_answer
         
-        tests_feedback = self.feedback_outputs_tests_jokenpo1(results, openai_api_key, assistantStyle)
+        tests_feedback = self.feedback_outputs_tests_jokenpo(results, openai_api_key, assistantStyle)
         return tests_feedback
     
 
 
-    def feedback_outputs_tests_jokenpo1(self, results, openai_api_key: str, assistantStyle: str) -> str:
+    def feedback_outputs_tests_jokenpo(self, results, openai_api_key: str, assistantStyle: str) -> str:
         client = openai.OpenAI(api_key=openai_api_key)
         
         if assistantStyle == "VERBOSE":
@@ -212,64 +212,6 @@ class ExecutionValidator:
         except Exception as e:
             print(f"Erro ao chamar a API da OpenAI: {e}")
             return ""
-
-
-
-    # Função específica para processar os outputs dos testes para jokenpo2
-    def feedback_outputs_tests_jokenpo2(self, results, openai_api_key: str, assistantStyle: str) -> str:
-        client = openai.OpenAI(api_key=openai_api_key)
-        
-        if assistantStyle == "VERBOSE":
-            prompt = f"""
-            [INSIRA O PROMPT VERBOSE PARA JOKENPO2 AQUI]
-            Resultados dos testes para jokenpo2:
-            {results}
-            
-            Utilize a técnica CoT para fornecer uma análise detalhada e amigável.
-            Complete o JSON abaixo:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
-            """
-        elif assistantStyle == "SUCCINCT":
-            prompt = f"""
-            [INSIRA O PROMPT SUCCINCT PARA JOKENPO2 AQUI]
-            Resultados:
-            {results}
-            
-            Seja extremamente direto.
-            Complete o JSON:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
-            """
-        else:  # INTERMEDIATE
-            prompt = f"""
-            [INSIRA O PROMPT INTERMEDIARY PARA JOKENPO2 AQUI]
-            Resultados dos testes:
-            {results}
-            
-            Forneça uma análise equilibrada sobre os outputs.
-            Complete o JSON:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
-            """
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300 
-            )
-            answer = response.choices[0].message.content
-            return answer
-        except Exception as e:
-            print(f"Erro ao chamar a API da OpenAI: {e}")
-            return ""
-
 
 
     def validator(self, code: str, assistantStyle: str, function_type: str, openai_api_key: str) -> str:

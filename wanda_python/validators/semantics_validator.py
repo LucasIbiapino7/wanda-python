@@ -74,7 +74,9 @@ class SemanticsValidator:
             Parâmetros usados:
             {used_params}
 
-            Explique de forma extremamente direta quantos parâmetros foram usados.
+            Utilizando esse código e os parâmetros apresentados, explique de forma extremamente direta 
+            quantos parâmetros foram usados e como isso afeta na na escolha da sua carta no primeiro round.
+
             sempre complete o json abaixo:
             {{
                 "pensamento": String,
@@ -86,7 +88,7 @@ class SemanticsValidator:
             Você é um assistente virtual de programação Python integrado à plataforma Wanda,
             um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
             jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código e você está 
-            responsável por analisar a primeira funação do aluno, respossável por escolher a carta que ele vai 
+            responsável por analisar a primeira função do aluno, responsável por escolher a carta que ele vai 
             jogar no primeiro round.
             Por padrão, a função que voce está analisando se chama strategy e tem como
             parâmetros: (card1, card2, card3), e que podem ser utilizados para melhorar a estratégia da escolha da carta jogada pelo aluno.
@@ -95,7 +97,9 @@ class SemanticsValidator:
             Parâmetros utilizados:
             {used_params}
 
-            Forneça uma análise direta, mas completa, sobre os parâmetros utilizados, indicando se há possibilidade de melhoria.
+            Utilizando esse código e os parâmetros apresentados, forneça uma análise direta, mas completa, 
+            sobre os parâmetros utilizados, indicando se há possibilidade de melhoria.
+
             sempre complete o json abaixo:
             {{
                 "pensamento": String,
@@ -136,14 +140,24 @@ class SemanticsValidator:
         # Placeholder para os prompts da jokenpo2
         if assistantStyle == "VERBOSE":
             prompt = f"""
-            [INSIRA O NOVO PROMPT VERBOSE PARA JOKENPO2 AQUI]
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código e você está 
+            responsável por analisar a segunda função do aluno, responsável por escolher a carta que ele vai 
+            jogar no segundo round.
+            Por padrão, a função que voce está analisando se chama strategy e tem como
+            parâmetros: (card1, card2, opponentCard1, opponentCard2), e que podem ser utilizados para melhorar a estratégia da escolha da carta jogada pelo aluno.
+
             O código do aluno:
             {code}
 
-            Parâmetros utilizados:
+            Parâmetros usados na estratégia:
             {used_params}
 
-            Complete o JSON:
+            Utilizando esse código e os parâmetros apresentados, explique de forma amigável e detalhada quantos 
+            parâmetros foram efetivamente usados e como isso afeta na na escolha da sua carta no segundo round.
+
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -151,14 +165,24 @@ class SemanticsValidator:
             """
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
-            [INSIRA O NOVO PROMPT SUCCINCT PARA JOKENPO2 AQUI]
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código e você está 
+            responsável por analisar a segunda função do aluno, responsável por escolher a carta que ele vai 
+            jogar no segundo round.
+            Por padrão, a função que voce está analisando se chama strategy e tem como
+            parâmetros: (card1, card2, opponentCard1, opponentCard2), e que podem ser utilizados para melhorar a estratégia da escolha da carta jogada pelo aluno.
+
             O código do aluno:
             {code}
 
-            Parâmetros usados:
+            Parâmetros usados na estratégia:
             {used_params}
 
-            Complete o JSON:
+            Utilizando esse código e os parâmetros apresentados, explique de forma extremamente direta 
+            quantos parâmetros foram usados e como isso afeta na na escolha da sua carta no segundo round.
+
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String
@@ -166,14 +190,24 @@ class SemanticsValidator:
             """
         else:  # INTERMEDIATE
             prompt = f"""
-            [INSIRA O NOVO PROMPT INTERMEDIARY PARA JOKENPO2 AQUI]
+            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código e você está 
+            responsável por analisar a segunda função do aluno, responsável por escolher a carta que ele vai 
+            jogar no segundo round.
+            Por padrão, a função que voce está analisando se chama strategy e tem como
+            parâmetros: (card1, card2, opponentCard1, opponentCard2), e que podem ser utilizados para melhorar a estratégia da escolha da carta jogada pelo aluno.
+
             O código do aluno:
             {code}
 
-            Parâmetros utilizados:
+            Parâmetros usados na estratégia:
             {used_params}
 
-            Complete o JSON:
+            Utilizando esse código e os parâmetros apresentados, forneça uma análise direta, mas completa, 
+            sobre os parâmetros utilizados, indicando se há possibilidade de melhoria.
+
+            sempre complete o json abaixo:
             {{
                 "pensamento": String,
                 "resposta": String

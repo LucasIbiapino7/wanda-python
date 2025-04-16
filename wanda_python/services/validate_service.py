@@ -36,7 +36,7 @@ class ValidateService:
         tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
 
         # 2 Validação: Assinatura e argumentos
-        response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle)
+        response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle, data.functionName)
         if response_validate:
             return ValidateResponse.create(valid=False, answer=response_validate, thought="")
 
@@ -46,7 +46,7 @@ class ValidateService:
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
         
         # 4 Validação: Executa uma bateria de testes
-        execution_errors = self.execution_validator.validator(code, data.assistantStyle)
+        execution_errors = self.execution_validator.validator(code, data.assistantStyle, data.functionName, self.openai_api_key)
         if execution_errors:
             resposta_dict_execution = json.loads(execution_errors)
             thought = resposta_dict_execution["pensamento"]
