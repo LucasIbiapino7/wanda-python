@@ -19,85 +19,86 @@ class SyntaxValidator:
         client = openai.OpenAI(api_key=openai_api_key)
 
         prompt_verbose = f"""
-        Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-        jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
         
-        O código do aluno:
-        {code}
+O código do aluno:
+{code}
 
-        Erro do python durante a execução do código:
-        {erro}
+Erro do python durante a execução do código:
+{erro}
         
-        Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-        explique para o aluno o motivo do erro.
+Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+explique para o aluno o motivo do erro.
 
-        Gere a resposta seguindo as seguintes regras:
-        Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
-        Use uma linguagem leve e não muito técnica.
-        Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
-        Não apresente o código corrigido por completo. Ao invés disso, explique o que houve e como corrigir, 
-        dando pistas específicas, mas sem reescrever todo o código.
-        sempre complete o json abaixo:
-        {{
-            "pensamento": String,
-            "resposta": String
-        }}
-        """
+Gere a resposta seguindo as seguintes regras:
+Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+Use uma linguagem leve e não muito técnica.
+Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
+Não apresente o código corrigido por completo. Ao invés disso, explique o que houve e como corrigir, 
+dando pistas específicas, mas sem reescrever todo o código.
+
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
+"""
 
         prompt_succint = f"""
-        Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-        jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
 
-        O código do aluno:
-        {code}
+O código do aluno:
+{code}
 
-        Erro do python durante a execução do código:
-        {erro}
+Erro do python durante a execução do código:
+{erro}
 
-        Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-        explique para o aluno o motivo do erro.
+Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+explique para o aluno o motivo do erro.
         
-        Gere a resposta seguindo as seguintes regras:
-        Seja extremamente direto. Nada de explicações longas.
-        Sem introduções ou despedidas.
-        Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
-        Dê uma pista para corrigir, mas de forma sucinta.
-        Não apresente o código corrigido.
+Gere a resposta seguindo as seguintes regras:
+Seja extremamente direto. Nada de explicações longas.
+Sem introduções ou despedidas.
+Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
+Dê uma pista para corrigir, mas de forma sucinta.
+Não apresente o código corrigido.
         
-        sempre complete o json abaixo:
-        {{
-            "pensamento": String,
-            "resposta": String
-        }}
-        """
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
+"""
 
         prompt_intermediary = f"""
-        Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-        um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-        jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
         
-        O código do aluno:
-        {code}
+O código do aluno:
+{code}
         
-        Erro do python durante a execução do código:
-        {erro}
+Erro do python durante a execução do código:
+{erro}
         
-        Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-        explique para o aluno o motivo do erro.
+Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+explique para o aluno o motivo do erro.
         
-        Gere a resposta seguindo as seguintes regras:
-        Utilize snippets de código para mostrar o erro e como corrigir.
-        Especifique a linha onde o erro aconteceu.
-        O snippet deve conter apenas a correção da linha onde ocorreu o código.
+Gere a resposta seguindo as seguintes regras:
+Utilize snippets de código para mostrar o erro e como corrigir.
+Especifique a linha onde o erro aconteceu.
+O snippet deve conter apenas a correção da linha onde ocorreu o código.
         
-        sempre complete o json abaixo:
-        {{
-            "pensamento": String,
-            "resposta": String
-        }}
-        """
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
+"""
 
         if assistantStyle == "VERBOSE":
             prompt = prompt_verbose

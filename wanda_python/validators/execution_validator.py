@@ -117,90 +117,90 @@ class ExecutionValidator:
         
         if assistantStyle == "VERBOSE":
             prompt = f"""
-            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-            jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
-            dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
-            e os outputs para possíveis cenários do jogo.
-            O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
-            entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
-            da lógica do aluno. Após a análise, pode sugerir que o aluno
-            submeta a função ou possíveis melhorias.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
+dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
+e os outputs para possíveis cenários do jogo.
+O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
+entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
+da lógica do aluno. Após a análise, pode sugerir que o aluno
+submeta a função ou possíveis melhorias.
 
-            resultados dos testes:
+resultados dos testes:
 
-            {results}
+{results}
 
-            Utilizando o resultado acima e usando a técnica CoT
-            Analise as saídas do aluno e explique para ele os resultados obtidos.
+Utilizando o resultado acima e usando a técnica CoT
+Analise as saídas do aluno e explique para ele os resultados obtidos.
 
-            Gere a resposta seguindo as seguintes regras:
-            Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
-            Use uma linguagem leve e não muito técnica.
+Gere a resposta seguindo as seguintes regras:
+Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+Use uma linguagem leve e não muito técnica.
             
-            sempre complete o json abaixo:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
-            """
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
+"""
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
-            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-            jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
-            dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
-            e os outputs para possíveis cenários do jogo.
-            O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
-            entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
-            da lógica do aluno. Após a análise, pode sugerir que o aluno
-            submeta a função ou possíveis melhorias.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
+dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
+e os outputs para possíveis cenários do jogo.
+O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
+entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
+da lógica do aluno. Após a análise, pode sugerir que o aluno
+submeta a função ou possíveis melhorias.
 
-            resultados dos testes:
+resultados dos testes:
 
-            {results}
+{results}
 
-            Utilizando o resultado acima e usando a técnica CoT
-            Analise as saídas do aluno e explique para ele os resultados obtidos.
+Utilizando o resultado acima e usando a técnica CoT
+Analise as saídas do aluno e explique para ele os resultados obtidos.
 
-            Gere a resposta seguindo as seguintes regras:
-            Seja extremamente direto. Nada de explicações longas.
-            Sem introduções ou despedidas.
+Gere a resposta seguindo as seguintes regras:
+Seja extremamente direto. Nada de explicações longas.
+Sem introduções ou despedidas.
             
-            sempre complete o json abaixo:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
-            """
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
+"""
         else:  # INTERMEDIATE
             prompt = f"""
-            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-            jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
-            dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
-            e os outputs para possíveis cenários do jogo.
-            O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
-            entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
-            da lógica do aluno. Após a análise, pode sugerir que o aluno
-            submeta a função ou possíveis melhorias.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
+dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
+e os outputs para possíveis cenários do jogo.
+O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
+entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
+da lógica do aluno. Após a análise, pode sugerir que o aluno
+submeta a função ou possíveis melhorias.
 
-            resultados dos testes:
+resultados dos testes:
 
-            {results}
+{results}
 
-            Utilizando o resultado acima e usando a técnica CoT
-            Analise as saídas do aluno e explique para ele os resultados obtidos.
+Utilizando o resultado acima e usando a técnica CoT
+Analise as saídas do aluno e explique para ele os resultados obtidos.
 
-            Gere a resposta seguindo as seguintes regras:
-            Forneça uma resposta equilibrada, não seja muito verboso e nem muito direto.
+Gere a resposta seguindo as seguintes regras:
+Forneça uma resposta equilibrada, não seja muito verboso e nem muito direto.
             
-            sempre complete o json abaixo:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
-            """
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
+"""
         try:
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -308,84 +308,84 @@ class ExecutionValidator:
         
         if assistantStyle == "VERBOSE":
             prompt = f"""
-            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
             
-            O código do aluno:
-            {code}
+O código do aluno:
+{code}
 
-            Erro do python durante a execução do código:
-            {erro}
+Erro do python durante a execução do código:
+{erro}
             
-            Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-            explique para o aluno o motivo do erro.
+Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+explique para o aluno o motivo do erro.
 
-            Gere a resposta seguindo as seguintes regras:
-            Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
-            Use uma linguagem leve e não muito técnica.
-            Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
+Gere a resposta seguindo as seguintes regras:
+Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+Use uma linguagem leve e não muito técnica.
+Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
             
-            sempre complete o json abaixo:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
-            """
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
+"""
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
-            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
 
-            O código do aluno:
-            {code}
+O código do aluno:
+{code}
 
-            Erro do python durante a execução do código:
-            {erro}
+Erro do python durante a execução do código:
+{erro}
 
-            Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-            explique para o aluno o motivo do erro.
+Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+explique para o aluno o motivo do erro.
             
-            Gere a resposta seguindo as seguintes regras:
-            Seja extremamente direto. Nada de explicações longas.
-            Sem introduções ou despedidas.
-            Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
-            Dê uma pista para corrigir, mas de forma sucinta.
-            Não apresente o código corrigido.
+Gere a resposta seguindo as seguintes regras:
+Seja extremamente direto. Nada de explicações longas.
+Sem introduções ou despedidas.
+Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
+Dê uma pista para corrigir, mas de forma sucinta.
+Não apresente o código corrigido.
             
-            sempre complete o json abaixo:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
             """
         else:  # INTERMEDIATE
             prompt = f"""
-            Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-            um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-            jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
+jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
             
-            O código do aluno:
-            {code}
+O código do aluno:
+{code}
             
-            Erro do python durante a execução do código:
-            {erro}
+Erro do python durante a execução do código:
+{erro}
             
-            Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-            explique para o aluno o motivo do erro.
+Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
+explique para o aluno o motivo do erro.
             
-            Gere a resposta seguindo as seguintes regras:
-            Utilize snippets de código para mostrar o erro e como corrigir.
-            Especifique a linha onde o erro aconteceu.
-            O snippet deve conter apenas a correção da linha onde ocorreu o código.
+Gere a resposta seguindo as seguintes regras:
+Utilize snippets de código para mostrar o erro e como corrigir.
+Especifique a linha onde o erro aconteceu.
+O snippet deve conter apenas a correção da linha onde ocorreu o código.
             
-            sempre complete o json abaixo:
-            {{
-                "pensamento": String,
-                "resposta": String
-            }}
-            """
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
+"""
         try:
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
