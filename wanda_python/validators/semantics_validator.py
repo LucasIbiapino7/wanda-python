@@ -145,7 +145,7 @@ Parâmetros utilizados:
 {used_params}
 
 Utilizando esse código e os parâmetros apresentados, forneça uma análise direta, mas completa, 
-sobre os parâmetros utilizados, indicando se há possibilidade de melhoria.
+quantos parâmetros foram usados e como isso afeta na na escolha da sua carta no primeiro round.
 
 sempre gere como saída um JSON no formato abaixo:
 {{
