@@ -14,6 +14,10 @@ def get_validate_service() -> ValidateService:
 def get_round_service() -> RoundService:
     return RoundService()
 
+@router.get("/validate")
+async def validate():
+    return {"message": "Validation successful!"}
+
 @router.post("/feedback", response_model=ValidateResponse)
 async def validate(data: ValidateRequest, service: ValidateService = Depends(get_validate_service)):
     # Chama o método do serviço

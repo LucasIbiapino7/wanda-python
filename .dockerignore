@@ -1,0 +1,32 @@
+# Diretórios de ambiente virtual
+.venv/
+venv/
+
+# Diretórios de testes
+test/
+tests/
+
+# Arquivos de controle de versão
+.git/
+.gitignore
+
+# Arquivos de configuração do editor/IDE
+.vscode/
+.idea/
+
+# Arquivos de cache do Python
+__pycache__/
+*.py[cod]
+
+# Arquivos de log
+*.log
+
+# Arquivos e diretórios temporários
+*.tmp
+*.swp
+*~
+
+# Arquivos de build
+build/
+dist/
+*.egg-info/

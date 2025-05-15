@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wanda_python
+    ports:
+      - "8002:8002"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1 
+    command: uvicorn wanda_python.app:app --host 0.0.0.0 --port 8000
