@@ -87,40 +87,56 @@ class ValidateService:
         # Pega a pipeline
         spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
         # 4) Executa pipeline do jogo (assinatura + semântica específicas)
-        result = await pipeline.run(
-            code=code,
+        spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
+        out = await pipeline.feedback(
+            code=data.code,
             assistant_style=data.assistantStyle,
             function_name=data.functionName,
             openai_api_key=self.openai_api_key
         )
         # result: {"valid": bool, "answer": str, "thought": str}
 
-        return ValidateResponse.create(**result)
+        return ValidateResponse.create(valid=bool(out.get("valid", False)), answer=str(out.get("answer", "")),
+            thought=str(out.get("thought", ""))
+        )
     
     # Run 
-    async def run (self, data: ValidateRequest) -> ValidateResponse:
-
+    async def run(self, data: ValidateRequest) -> ValidateResponse:
         code = data.code
 
+        # 1) Sintaxe
         response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
         if response_validate:
-            thought = response_validate["pensamento"]
-            answer = response_validate["resposta"]
-            return ValidateResponse.create(valid=False, answer=answer, thought=thought)
-        
-        tree = ast.parse(code) # Vai ser usada nas próximas duas validações (árvore do código)
-        # 2 Validação: Assinatura e argumentos
-        response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle, data.functionName)
-        if response_validate:
-            return ValidateResponse.create(valid=False, answer=response_validate, thought="")
+            return ValidateResponse.create(
+                valid=False,
+                answer=response_validate.get("resposta", ""),
+                thought=response_validate.get("pensamento", "")
+            )
 
-        # 3 Validação: Verificando comandos maliciosos
+        # 2) AST para malicioso
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return ValidateResponse.create(False, "Erro de sintaxe ao analisar o código.", "")
+
+        # 3) Malicioso
         malicious_errors = self.malicious_checker.validate(tree)
         if malicious_errors:
-            return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
+            return ValidateResponse.create(False, malicious_errors, "")
 
-        # 4 Chama a função que vai rodar os testes
-        feedback_tests = self.execution_validator.feedback_tests(code, data.assistantStyle, data.functionName, self.openai_api_key)
+        # 4) Pipeline -> RUN
+        spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
+        out = await pipeline.run(
+            code=data.code,
+            assistant_style=data.assistantStyle,
+            function_name=data.functionName,
+            openai_api_key=self.openai_api_key
+        )
 
-        return ValidateResponse.create(valid=True, answer=feedback_tests["resposta"], thought=feedback_tests["pensamento"])
+        return ValidateResponse.create(
+            valid=bool(out.get("valid", False)),
+            answer=str(out.get("answer", "")),
+            thought=str(out.get("thought", ""))
+        )
+
     
