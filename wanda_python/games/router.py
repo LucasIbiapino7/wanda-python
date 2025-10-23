@@ -1,9 +1,9 @@
-from typing import Protocol, Tuple
+from typing import Protocol, Dict, Any, Tuple
 from .registry import REGISTRY, GameSpec
-from .pipelines.jokenpo import JokenpoFeedbackPipeline
+from .pipelines.jokenpo import JokenpoPipeline
 
 class GameFeedbackPipeline(Protocol):
-    async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> dict:
+    async def feedback(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> dict:
         """
         Retorna dict padronizado:
         {
@@ -12,7 +12,16 @@ class GameFeedbackPipeline(Protocol):
           "thought": str
         }
         """
-        ...
+    async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+        """
+        Execução de testes do jogo (assinatura + testes).
+        Retorna:
+        {
+          "valid": bool,
+          "answer": str,
+          "thought": str
+        }
+        """
 
 def resolve_pipeline(game_name: str, function_name: str) -> Tuple[GameSpec, GameFeedbackPipeline]:
     spec = REGISTRY.get(game_name)
@@ -24,6 +33,6 @@ def resolve_pipeline(game_name: str, function_name: str) -> Tuple[GameSpec, Game
 
     # Fábricas para cada jogo
     if game_name == "JOKENPO":
-        return spec, JokenpoFeedbackPipeline(spec)
+        return spec, JokenpoPipeline(spec)
 
     raise ValueError(f"Pipeline não encontrado para {game_name}")
