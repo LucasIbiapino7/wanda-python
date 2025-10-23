@@ -5,6 +5,7 @@ from wanda_python.validators.signature_validator import SignatureValidator
 from wanda_python.validators.malicious_checker import MaliciousChecker
 from wanda_python.validators.execution_validator import ExecutionValidator
 from wanda_python.validators.semantics_validator import SemanticsValidator
+from ..games.router import resolve_pipeline
 
 import json
 
@@ -65,9 +66,11 @@ class ValidateService:
         
         tree = ast.parse(code) # Vai ser usada nas próximas duas validações
         # 2 Validação: Assinatura e argumentos
+        """
         response_validate = self.signature_validator.validate_signature_and_parameters(tree, data.assistantStyle, data.functionName)
         if response_validate:
             return ValidateResponse.create(valid=False, answer=response_validate, thought="")
+        """
 
         # 3 Validação: Verificando comandos maliciosos
         malicious_errors = self.malicious_checker.validate(tree)
@@ -75,11 +78,24 @@ class ValidateService:
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
 
         # Caso passe em todas as validações, faz uma validação da semântica
+        """
         semantic_feedback = self.semantics_validator.validator(code, tree, data.assistantStyle, self.openai_api_key, data.functionName)
         thought = semantic_feedback["pensamento"]
         answer = semantic_feedback["resposta"]
+        """
 
-        return ValidateResponse.create(valid=True, answer=answer, thought=thought) 
+        # Pega a pipeline
+        spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
+        # 4) Executa pipeline do jogo (assinatura + semântica específicas)
+        result = await pipeline.run(
+            code=code,
+            assistant_style=data.assistantStyle,
+            function_name=data.functionName,
+            openai_api_key=self.openai_api_key
+        )
+        # result: {"valid": bool, "answer": str, "thought": str}
+
+        return ValidateResponse.create(**result)
     
     # Run 
     async def run (self, data: ValidateRequest) -> ValidateResponse:
