@@ -22,6 +22,16 @@ class GameFeedbackPipeline(Protocol):
           "thought": str
         }
         """
+    async def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+        """
+        Validação completa do jogo (assinatura + testes finais).
+        Retorna:
+        {
+          "valid": bool,
+          "answer": str,
+          "thought": str
+        }
+        """
 
 def resolve_pipeline(game_name: str, function_name: str) -> Tuple[GameSpec, GameFeedbackPipeline]:
     spec = REGISTRY.get(game_name)

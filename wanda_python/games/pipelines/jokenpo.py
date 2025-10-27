@@ -86,13 +86,7 @@ class JokenpoPipeline:
     
 
     #RUN 
-    async def run(
-        self,
-        code: str,
-        assistant_style: str,
-        function_name: str, 
-        openai_api_key: str
-    ) -> Dict[str, Any]:
+    async def run(self,code: str,assistant_style: str,function_name: str, openai_api_key: str) -> Dict[str, Any]:
 
         style = _normalize_style(assistant_style)
 
@@ -106,22 +100,42 @@ class JokenpoPipeline:
             }
 
         # 2) Assinatura
-        sig_msg = self._signature.validate_signature_and_parameters(
-            tree=tree,
-            assistant_style=style,
-            function_type=function_name
-        )
+        sig_msg = self._signature.validate_signature_and_parameters(tree=tree,assistant_style=style,function_type=function_name)
         if sig_msg:
             return { "valid": False, "answer": sig_msg, "thought": "" }
 
-        tests = self._execution.feedback_tests(
-            code=code,
-            assistantStyle=style,
-            function_type=function_name,
-            openai_api_key=openai_api_key
-        )
+        tests = self._execution.feedback_tests(code=code,assistantStyle=style, function_type=function_name,openai_api_key=openai_api_key )
 
         thought = str(tests.get("pensamento", "")) if isinstance(tests, dict) else ""
         answer = str(tests.get("resposta", "")) if isinstance(tests, dict) else ""
 
         return { "valid": True, "answer": answer, "thought": thought }
+
+    async def validate(self,code: str,assistant_style: str,function_name: str,openai_api_key: str) -> Dict[str, Any]:
+        style = _normalize_style(assistant_style)
+        # 1) AST
+        tree = self._parse_ast(code)
+        if tree is None:
+            return {
+                "valid": False,
+                "answer": "Não consegui analisar a sua função por erro de sintaxe.",
+                "thought": ""
+            }
+
+        # 2) Assinatura 
+        sig_msg = self._signature.validate_signature_and_parameters(tree=tree, assistant_style=style,function_type=function_name
+        )
+        if sig_msg:
+            return {"valid": False, "answer": sig_msg, "thought": ""}
+
+        # 3) Execução de testes
+        exec_result = self._execution.validator(code=code,assistantStyle=style,function_type=function_name,openai_api_key=openai_api_key)
+
+        if isinstance(exec_result, dict) and ("pensamento" in exec_result or "resposta" in exec_result):
+            return {
+                "valid": False,
+                "answer": str(exec_result.get("resposta", "")),
+                "thought": str(exec_result.get("pensamento", ""))
+            }
+
+        return {"valid": True, "answer": "aceita", "thought": ""}
