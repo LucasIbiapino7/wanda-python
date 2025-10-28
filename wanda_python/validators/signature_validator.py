@@ -1,4 +1,6 @@
 import ast
+from ..games.registry import GameSpec
+from typing import Optional
 
 class SignatureValidator:
     def validate_signature_and_parameters(self, tree: ast.AST, assistant_style: str, function_type: str) -> str:
@@ -109,3 +111,78 @@ class SignatureValidator:
             return style_dict["wrong_signature"]
 
         return ""  # Sem erros
+
+    def validate_bits_signature(self, tree: ast.AST, assistant_style: str, spec: GameSpec) -> str:
+        """
+        Validação de assinatura para o jogo BITS.
+        Usa a assinatura do GameSpec (spec.signature["strategy"]) e exige a função 'strategy'
+        com os parâmetros exatamente na ordem indicada.
+        Retorna string vazia se estiver OK; caso contrário, retorna a mensagem de erro
+        de acordo com o estilo escolhido.
+        """
+        style = (assistant_style or "").strip().upper()
+        if style not in ("VERBOSE", "SUCCINCT", "INTERMEDIATE", "INTERMEDIARY"):
+            style = "INTERMEDIATE"
+        if style == "INTERMEDIARY":
+            style = "INTERMEDIATE"
+
+         # Lê a assinatura esperada do GameSpec
+        expected_args = spec.signature.get("strategy", [])
+        expected_sig_str = ", ".join(expected_args)
+
+        # Mensagens por estilo
+        messages = {
+            "VERBOSE": {
+                "missing_function": (
+                    "Ei! Não encontrei a função 'strategy' no seu código.\n"
+                    f"Para o jogo BITS, ela deve existir assim:\n\n"
+                    f"def strategy({expected_sig_str}):\n"
+                    "    # seu código aqui\n\n"
+                    "Verifique se o nome está correto e se a indentação não quebrou a definição."
+                ),
+                "wrong_signature": (
+                    "Quase lá! Achei a função 'strategy', mas a assinatura não confere.\n"
+                    f"Para o BITS, a ordem correta dos parâmetros é:\n"
+                    f"({expected_sig_str}).\n"
+                    "Ajuste a ordem/nome dos parâmetros para seguir exatamente essa lista."
+                ),
+            },
+            "SUCCINCT": {
+                "missing_function": (
+                    "Função 'strategy' ausente. Use:\n"
+                    f"def strategy({expected_sig_str}):"
+                ),
+                "wrong_signature": (
+                    "Assinatura incorreta. Esperado:\n"
+                    f"({expected_sig_str})."
+                ),
+            },
+            "INTERMEDIATE": {
+                "missing_function": (
+                    "Não encontrei a função 'strategy'. Para o BITS, declare assim:\n"
+                    f"def strategy({expected_sig_str}):"
+                ),
+                "wrong_signature": (
+                    "A função 'strategy' existe, mas a assinatura esperada para o BITS é:\n"
+                    f"({expected_sig_str})."
+                ),
+            },
+        }
+        style_msgs = messages[style]
+
+        # Procura a função 'strategy'
+        strategy_fn: Optional[ast.FunctionDef] = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "strategy":
+                strategy_fn = node
+                break
+        
+        if not strategy_fn:
+            return style_msgs["missing_function"]
+        
+        # Compara parâmetros
+        actual_args = [arg.arg for arg in strategy_fn.args.args]
+        if actual_args != expected_args:
+            return style_msgs["wrong_signature"]
+
+        return ""  # OK

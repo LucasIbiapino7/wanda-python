@@ -2,6 +2,9 @@ import openai
 import ast
 import json
 from openai import OpenAIError
+from typing import Set, Iterable
+
+from ..games.registry import GameSpec
 
 
 def ask_openai(prompt: str, api_key: str) -> dict:
@@ -263,3 +266,127 @@ sempre gere como saída um JSON no formato abaixo:
 """
         answer = ask_openai(prompt, openai_api_key)
         return answer
+    
+    def _extract_used_params(self, tree: ast.AST, expected: Iterable[str]) -> Set[str]:
+        """
+        Extrai o conjunto de parâmetros (por nome) realmente usados dentro da função strategy.
+        """
+        expected_set = set(expected)
+        used = set()
+
+        strategy_function = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "strategy":
+                strategy_function = node
+                break
+
+        if not strategy_function:
+            return used
+
+        for node in ast.walk(strategy_function):
+            if isinstance(node, ast.Name) and node.id in expected_set and isinstance(node.ctx, ast.Load):
+                used.add(node.id)
+
+        return used
+    
+    def validate_semantics_bits(self,code: str,tree: ast.AST,assistantStyle: str, openai_api_key: str,spec: GameSpec) -> dict:
+        """
+        Validação semântica para o jogo BITS.
+        - Pega a assinatura e retornos válidos do GameSpec.
+        - Analisa quais parâmetros da assinatura foram realmente utilizados.
+        - Monta um prompt (placeholders prontos para você ajustar depois).
+        """
+        # Assinatura esperada e retornos válidos vindos do spec
+        expected_args = spec.signature.get("strategy", [])
+        valid_returns = spec.valid_returns.get("strategy", [])
+
+        used_params = self._extract_used_params(tree, expected_args)
+
+        if assistantStyle == "VERBOSE":
+            prompt = f"""
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de card game. O jogo dessa função que você vai receber agora se chama BITS, e o aluno precisa
+implementar uma função em python que vai ser responsável por escolher a carta que ele vai jogar em cada round.  
+A função analisada é 'strategy' e tem como parâmetros: ({", ".join(expected_args)}).
+Os parâmetros: bit8, bit16, bit32 e firewall podem ter os valores 0 ou 1, onde 1 indica que o aluno ainda
+tem aquela carta e 0 indica que ele já usou aquela carta. Já o parâmetro opp_last indica a última carta jogada
+pelo openente. O jogo consiste em 4 rounds, e a função escrita pelo aluno é responsável por escolher a carta
+jogada em cada um dos 4 rounds, usando a lógica que ele preferir, para escolher a carta em cada um dos rounds.
+
+Abaixo temos o código enviado pelo aluno e quais parâmetros ele utilizou no código.
+
+Código do aluno:
+{code}
+
+Parâmetros efetivamente usados:
+{sorted(list(used_params))}
+
+Utilizando esse código e os parâmetros apresentados, faça uma análise semântica, explicando de forma amigável e detalhada quantos 
+parâmetros foram efetivamente usados e como isso afeta na na escolha da sua carta do aluno no jogo BITS.
+
+Sempre gere SAÍDA em JSON:
+{{
+  "pensamento": String,
+  "resposta": String
+}}
+"""
+        elif assistantStyle == "SUCCINCT":
+            prompt = f"""
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de card game. O jogo dessa função que você vai receber agora se chama BITS, e o aluno precisa
+implementar uma função em python que vai ser responsável por escolher a carta que ele vai jogar em cada round.  
+A função analisada é 'strategy' e tem como parâmetros: ({", ".join(expected_args)}).
+Os parâmetros: bit8, bit16, bit32 e firewall podem ter os valores 0 ou 1, onde 1 indica que o aluno ainda
+tem aquela carta e 0 indica que ele já usou aquela carta. Já o parâmetro opp_last indica a última carta jogada
+pelo openente. O jogo consiste em 4 rounds, e a função escrita pelo aluno é responsável por escolher a carta
+jogada em cada um dos 4 rounds, usando a lógica que ele preferir, para escolher a carta em cada um dos rounds.
+
+Abaixo temos o código enviado pelo aluno e quais parâmetros ele utilizou no código.
+
+Código do aluno:
+{code}
+
+Parâmetros efetivamente usados:
+{sorted(list(used_params))}
+
+Utilizando esse código e os parâmetros apresentados, faça uma análise semântica, explicando de forma extremamente direta 
+quantos parâmetros foram usados e como isso afeta na na escolha da sua carta em cada um dos rounds.
+
+Sempre gere SAÍDA em JSON:
+{{
+  "pensamento": String,
+  "resposta": String
+}}
+"""
+        else:  # INTERMEDIATE
+            prompt = f"""
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de card game. O jogo dessa função que você vai receber agora se chama BITS, e o aluno precisa
+implementar uma função em python que vai ser responsável por escolher a carta que ele vai jogar em cada round.  
+A função analisada é 'strategy' e tem como parâmetros: ({", ".join(expected_args)}).
+Os parâmetros: bit8, bit16, bit32 e firewall podem ter os valores 0 ou 1, onde 1 indica que o aluno ainda
+tem aquela carta e 0 indica que ele já usou aquela carta. Já o parâmetro opp_last indica a última carta jogada
+pelo openente. O jogo consiste em 4 rounds, e a função escrita pelo aluno é responsável por escolher a carta
+jogada em cada um dos 4 rounds, usando a lógica que ele preferir, para escolher a carta em cada um dos rounds.
+
+Abaixo temos o código enviado pelo aluno e quais parâmetros ele utilizou no código.
+
+Código do aluno:
+{code}
+
+Parâmetros efetivamente usados:
+{sorted(list(used_params))}
+
+Utilizando esse código e os parâmetros apresentados, faça uma análise semântica, fornecendo uma análise direta, 
+mas completa, sobre os parâmetros utilizados, indicando se há possibilidade de melhoria.
+
+Sempre gere SAÍDA em JSON:
+{{
+  "pensamento": String,
+  "resposta": String
+}}
+"""
+        return ask_openai(prompt, openai_api_key)

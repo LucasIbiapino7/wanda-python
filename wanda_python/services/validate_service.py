@@ -44,7 +44,7 @@ class ValidateService:
             function_name=data.functionName,
             openai_api_key=self.openai_api_key
         )
-        # Mantém a variável execution_errors, pra coerência
+        
         execution_errors = None
         if not result.get("valid", False):
             execution_errors = {
@@ -91,8 +91,6 @@ class ValidateService:
         """
 
         # Pega a pipeline
-        spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
-        # 4) Executa pipeline do jogo (assinatura + semântica específicas)
         spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
         out = await pipeline.feedback(
             code=data.code,
