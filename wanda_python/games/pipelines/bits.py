@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 
 from ...validators.signature_validator import SignatureValidator
 from ...validators.semantics_validator import SemanticsValidator
+from ...validators.execution_validator import ExecutionValidator
 from ..registry import GameSpec
 
 def _normalize_style(style: str) -> str:
@@ -16,6 +17,7 @@ class BitsPipeline:
         self.spec = spec
         self._signature = SignatureValidator()
         self._semantics = SemanticsValidator()
+        self._execution = ExecutionValidator()
     
     def _parse_ast(self, code: str) -> Optional[ast.AST]:
         try:
@@ -58,4 +60,34 @@ class BitsPipeline:
             "answer": answer,
             "thought": thought
         }
+    
+    def _parse_ast(self, code: str) -> Optional[ast.AST]:
+        try:
+            return ast.parse(code)
+        except SyntaxError:
+            return None
+
+    async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+        style = _normalize_style(assistant_style)
+        
+        tree = self._parse_ast(code)
+        if tree is None:
+            return {
+                "valid": False,
+                "answer": "Não consegui analisar a sua função por erro de sintaxe.",
+                "thought": ""
+            }
+
+        # Assinatura
+        sig_msg = self._signature.validate_bits_signature(tree=tree,assistant_style=style,spec=self.spec)
+        if sig_msg:
+            return {"valid": False, "answer": sig_msg, "thought": ""}
+
+        # testes do jogo
+        tests = self._execution.feedback_tests_bits(code=code, assistantStyle=style, openai_api_key=openai_api_key)
+
+        thought = str(tests.get("pensamento", "")) if isinstance(tests, dict) else ""
+        answer = str(tests.get("resposta", "")) if isinstance(tests, dict) else ""
+
+        return {"valid": True, "answer": answer, "thought": thought}
 
