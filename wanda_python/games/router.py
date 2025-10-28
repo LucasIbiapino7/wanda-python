@@ -1,6 +1,7 @@
 from typing import Protocol, Dict, Any, Tuple
 from .registry import REGISTRY, GameSpec
 from .pipelines.jokenpo import JokenpoPipeline
+from .pipelines.bits import BitsPipeline
 
 class GameFeedbackPipeline(Protocol):
     async def feedback(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> dict:
@@ -44,5 +45,7 @@ def resolve_pipeline(game_name: str, function_name: str) -> Tuple[GameSpec, Game
     # Fábricas para cada jogo
     if game_name == "JOKENPO":
         return spec, JokenpoPipeline(spec)
+    elif game_name == "BITS":
+        return spec, BitsPipeline(spec)
 
     raise ValueError(f"Pipeline não encontrado para {game_name}")

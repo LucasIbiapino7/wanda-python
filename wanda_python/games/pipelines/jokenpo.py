@@ -53,7 +53,7 @@ class JokenpoPipeline:
                 "thought": ""
             }
 
-        # 2) Assinatura — usa seu validador atual
+        # 2) Assinatura
         sig_msg = self._signature.validate_signature_and_parameters(
             tree=tree,
             assistant_style=style,
