@@ -1,5 +1,5 @@
 from wanda_python.schema.round_dto import RoundRequestDTO, RoundResponseDTO
-from typing import List, Optional
+from typing import List, Optional, Any
 
 class RoundService:
 
@@ -30,7 +30,7 @@ class RoundService:
         except Exception as err:
             return RoundResponseDTO.create(player1_choice=None, player2_choice=None)
     
-    async def execute_player_function(self, function_code: str, parameters: List[Optional[str]]) -> str:
+    async def execute_player_function(self, function_code: str, parameters: List[Any]) -> str:
          
         try:
             # Criar um ambiente local para execução segura

@@ -3,6 +3,7 @@ from wanda_python.services.validate_service import ValidateService
 from wanda_python.services.round_service import RoundService
 from wanda_python.schema.validate_dto import ValidateRequest, ValidateResponse
 from wanda_python.schema.round_dto import RoundRequestDTO, RoundResponseDTO
+from wanda_python.schema.round_bits_dto import RoundBitsRequestDTO
 
 router = APIRouter()
 
@@ -35,4 +36,8 @@ async def validate(data: ValidateRequest, service: ValidateService = Depends(get
 
 @router.post("/round", response_model=RoundResponseDTO)
 async def round(data: RoundRequestDTO, service: RoundService = Depends(get_round_service)):
+    return await service.round_choices(data)
+
+@router.post("/round/bits", response_model=RoundResponseDTO)
+async def round_bits(data: RoundBitsRequestDTO,service: RoundService = Depends(get_round_service)):
     return await service.round_choices(data)

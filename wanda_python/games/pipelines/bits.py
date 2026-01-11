@@ -90,4 +90,46 @@ class BitsPipeline:
         answer = str(tests.get("resposta", "")) if isinstance(tests, dict) else ""
 
         return {"valid": True, "answer": answer, "thought": thought}
+    
+    async def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+        style = _normalize_style(assistant_style)
 
+        # 1) AST
+        tree = self._parse_ast(code)
+        if tree is None:
+            return {
+                "valid": False,
+                "answer": "Não consegui analisar a sua função por erro de sintaxe.",
+                "thought": ""
+            }
+
+        # 2) Assinatura específica do BITS
+        sig_msg = self._signature.validate_bits_signature(tree=tree, assistant_style=style, spec=self.spec)
+        if sig_msg:
+            return {
+                "valid": False,
+                "answer": sig_msg,
+                "thought": ""
+            }
+
+        # 3) Execução de testes 
+        exec_result = self._execution.validator_bits(code=code, assistantStyle=style, openai_api_key=openai_api_key)
+
+        # Se retornou dicionário = erro 
+        if isinstance(exec_result, dict) and (
+            "pensamento" in exec_result or "resposta" in exec_result
+        ):
+            return {
+                "valid": False,
+                "answer": str(exec_result.get("resposta", "")),
+                "thought": str(exec_result.get("pensamento", ""))
+            }
+
+        # 4) Se passou em tudo = aceito
+        return {
+            "valid": True,
+            "answer": "aceita",
+            "thought": ""
+        }
+
+    

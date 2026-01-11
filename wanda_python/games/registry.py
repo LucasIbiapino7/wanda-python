@@ -27,7 +27,7 @@ REGISTRY: Dict[str, GameSpec] = {
     ),
     "BITS": GameSpec(
         name="BITS",
-        functions=["strategy"],
+        functions=["bits"],
         rulesVersion="27/10/2025",
         signature={
             "strategy": ["bit8", "bit16", "bit32", "firewall", "opp_last"]

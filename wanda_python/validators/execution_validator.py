@@ -48,10 +48,6 @@ class ExecutionValidator:
 
 
     def feedback_tests_jokenpo1(self, code: str, assistantStyle: str, openai_api_key: str) -> dict:
-        """
-        Executa os testes para a função jokenpo1, onde a assinatura é:
-          def strategy(card1, card2, card3)
-        """
         # Test inputs para jokenpo1: 3 parâmetros
         test_inputs = [
             ("pedra", "pedra", "papel"),
@@ -74,16 +70,22 @@ class ExecutionValidator:
         for i, test_case in enumerate(test_inputs):
             try:
                 output = strategy_function(*test_case)
-                if output not in ("pedra", "papel", "tesoura"):
+                if output in ("pedra", "papel", "tesoura"):
                     results.append({
                         "output": output,
-                        "valid": False,
-                        "error": "Retorno fora do esperado (não é pedra/papel/tesoura)"
-                    })
+                        "valid": True,
+                        "gameValid": True
+                })
                 else:
                     results.append({
                         "output": output,
-                        "valid": True
+                        "valid": True,
+                        "gameValid": False,
+                        "fallback": "NEXT_AVAILABLE_CARD",
+                        "note": (
+                            "Retorno fora do esperado. O jogo ignora esse valor e "
+                            "usa a próxima carta disponível na mão do jogador."
+                        )
                     })
             except Exception as err:
                 llm_answer = self.error_execution(code, err, openai_api_key)
@@ -95,12 +97,6 @@ class ExecutionValidator:
 
 
     def feedback_tests_jokenpo2(self, code: str, assistantStyle: str, openai_api_key: str) -> dict:
-        """
-        Executa os testes para a função jokenpo2, onde a assinatura é:
-        def strategy(card1, card2, opponentCard1, opponentCard2)
-        Aqui você deve definir os inputs de teste apropriados.
-        Atualmente, segue um exemplo placeholder.
-        """
         # Test inputs para jokenpo2: 4 parâmetros
         test_inputs = [
             ("pedra", "papel", "tesoura", "pedra"),
@@ -123,16 +119,22 @@ class ExecutionValidator:
         for i, test_case in enumerate(test_inputs):
             try:
                 output = strategy_function(*test_case)
-                if output not in ("pedra", "papel", "tesoura"):
+                if output in ("pedra", "papel", "tesoura"):
                     results.append({
                         "output": output,
                         "valid": True,
-                        "error": "Retorno fora do esperado pelo jogo (não é pedra/papel/tesoura)"
-                    })
+                        "gameValid": True
+                })
                 else:
                     results.append({
                         "output": output,
-                        "valid": True
+                        "valid": True,
+                        "gameValid": False,
+                        "fallback": "NEXT_AVAILABLE_CARD",
+                        "note": (
+                            "Retorno fora do esperado. O jogo ignora esse valor e "
+                            "usa a próxima carta disponível na mão do jogador."
+                        )
                     })
             except Exception as err:
                 llm_answer = self.error_execution(code, err, openai_api_key)
@@ -148,27 +150,50 @@ class ExecutionValidator:
         if assistantStyle == "VERBOSE":
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
-dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
-e os outputs para possíveis cenários do jogo.
-O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
-entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
-da lógica do aluno. Após a análise, pode sugerir que o aluno
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
+Você vai analisar uma série de resultados de testes realizados com a função escrita pelo aluno e os outputs para possíveis 
+cenários do jogo jokenpo. O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura", para que a sua estratégia 
+seja a mais completa e abrangente possível, entretanto, caso seja um retorno fora do esperado, a escolha da 
+carta usada na rodada passa a não depender da lógica do aluno. Após a análise, pode sugerir que o aluno
 submeta a função ou possíveis melhorias.
+
+Você vai analisar os resultados de testes do modo RUN. Aqui vão algumas explicações sobre o resultado e o que 
+isso representa no jogo:
+- Cada output representa o comportamento da função do aluno para determinado conjunto de entrada.
+- Se `valid` = true, significa que o código executou sem erro (não travou / não deu exceção).
+- Se `gameValid` = true, significa que o retorno foi aceito pelo jogo ("pedra", "papel" ou "tesoura").
+- Se `gameValid` = false, significa que o retorno NÃO é um valor esperado pelo jogo.
+  Nesse caso, a engine IGNORA o retorno do aluno e aplica um fallback:
+  - `fallback` = "NEXT_AVAILABLE_CARD": o jogo usa a próxima carta disponível na mão do jogador.
+  Ou seja: nesses casos, a rodada não depende da lógica do aluno, e a estratégia fica menos “controlável”.
 
 resultados dos testes:
 
 {results}
 
 Utilizando o resultado acima e usando a técnica CoT
-Analise as saídas do aluno e explique para ele os resultados obtidos.
+Sua tarefa é:
+- Resuma quantos testes tiveram `gameValid=true` e quantos tiveram `gameValid=false`(sem citar essa informação
+interna: 'gameValid') e explique o seu impacto no jogo.
+- Comente sobre a Diversidade das escolhas do aluno e como isso pode impactar no jogo. Por mais que não 
+existam estratégias erradas, uma que retorna sempre a mesma carta pode ser previsível, diferente de uma que 
+tenha uma variedade maior de retornos. 
+
+Tom e postura (MUITO IMPORTANTE):
+- Você NÃO é um “julgador” e NÃO deve tratar como se a solução estivesse “ruim” por padrão.
+- Reconheça o que está bom no código do aluno. Se ele retornou valores válidos com frequência, elogie explicitamente.
+- O aluno pode submeter independente do resultado dos testes. Não diga que “não pode” ou que “está errado” só 
+por usar poucos.
+- Só sugira melhorias se existir uma sugestão clara e útil. Se não houver, diga que a estratégia já está 
+consistente e pronta para submeter.
 
 Gere a resposta seguindo as seguintes regras:
-Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
-Use uma linguagem leve e não muito técnica.
+- Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+- Use uma linguagem leve e não muito técnica.
             
-complete o JSON abaixo:
+sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -177,27 +202,51 @@ complete o JSON abaixo:
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
-dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
-e os outputs para possíveis cenários do jogo.
-O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
-entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
-da lógica do aluno. Após a análise, pode sugerir que o aluno
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
+Você vai analisar uma série de resultados de testes realizados com a função escrita pelo aluno e os outputs para possíveis 
+cenários do jogo jokenpo. O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura", para que a sua estratégia 
+seja a mais completa e abrangente possível, entretanto, caso seja um retorno fora do esperado, a escolha da 
+carta usada na rodada passa a não depender da lógica do aluno. Após a análise, pode sugerir que o aluno
 submeta a função ou possíveis melhorias.
+
+Você vai analisar os resultados de testes do modo RUN. Aqui vão algumas explicações sobre o resultado e o que 
+isso representa no jogo:
+- Cada output representa o comportamento da função do aluno para determinado conjunto de entrada.
+- Se `valid` = true, significa que o código executou sem erro (não travou / não deu exceção).
+- Se `gameValid` = true, significa que o retorno foi aceito pelo jogo ("pedra", "papel" ou "tesoura").
+- Se `gameValid` = false, significa que o retorno NÃO é um valor esperado pelo jogo.
+  Nesse caso, a engine IGNORA o retorno do aluno e aplica um fallback:
+  - `fallback` = "NEXT_AVAILABLE_CARD": o jogo usa a próxima carta disponível na mão do jogador.
+  Ou seja: nesses casos, a rodada não depende da lógica do aluno, e a estratégia fica menos “controlável”.
 
 resultados dos testes:
 
 {results}
 
 Utilizando o resultado acima e usando a técnica CoT
-Analise as saídas do aluno e explique para ele os resultados obtidos.
+Sua tarefa é:
+- Resuma quantos testes tiveram `gameValid=true` e quantos tiveram `gameValid=false`(sem citar essa informação
+interna: 'gameValid') e explique o seu impacto no jogo.
+- Comente sobre a Diversidade das escolhas do aluno e como isso pode impactar no jogo. Por mais que não 
+existam estratégias erradas, uma que retorna sempre a mesma carta pode ser previsível, diferente de uma que 
+tenha uma variedade maior de retornos. 
+
+Tom e postura (MUITO IMPORTANTE):
+- Você NÃO é um “julgador” e NÃO deve tratar como se a solução estivesse “ruim” por padrão.
+- Reconheça o que está bom no código do aluno. Se ele retornou valores válidos com frequência, elogie explicitamente.
+- O aluno pode submeter independente do resultado dos testes. Não diga que “não pode” ou que “está errado” só 
+por usar poucos.
+- Só sugira melhorias se existir uma sugestão clara e útil. Se não houver, diga que a estratégia já está 
+consistente e pronta para submeter.
 
 Gere a resposta seguindo as seguintes regras:
-Seja extremamente direto. Nada de explicações longas.
-Sem introduções ou despedidas.
+- Fale em primeira pessoa, como se estivesse conversando com o aluno.
+- Seja extremamente direto. Nada de explicações longas.
+- Sem introduções ou despedidas.
             
-complete o JSON abaixo:
+sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -206,26 +255,50 @@ complete o JSON abaixo:
         else:  # INTERMEDIATE
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-jogo chamado Jokenpo, onde o aluno escreve a lógica de uma função strategy para escolher a carta em um 
-dos 3 rounds. Você vai analisar uma série de testes realizados com a função escrita pelo aluno
-e os outputs para possíveis cenários do jogo.
-O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura",  para que a sua estratégia seja a mais completa e abrangente possível, 
-entretanto, caso seja um retorno fora do esperado, a escolha da carta usada na rodada passa a não depender
-da lógica do aluno. Após a análise, pode sugerir que o aluno
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
+Você vai analisar uma série de resultados de testes realizados com a função escrita pelo aluno e os outputs para possíveis 
+cenários do jogo jokenpo. O ideal, é que os retornos sejam: "pedra", "papel" ou "tesoura", para que a sua estratégia 
+seja a mais completa e abrangente possível, entretanto, caso seja um retorno fora do esperado, a escolha da 
+carta usada na rodada passa a não depender da lógica do aluno. Após a análise, pode sugerir que o aluno
 submeta a função ou possíveis melhorias.
+
+Você vai analisar os resultados de testes do modo RUN. Aqui vão algumas explicações sobre o resultado e o que 
+isso representa no jogo:
+- Cada output representa o comportamento da função do aluno para determinado conjunto de entrada.
+- Se `valid` = true, significa que o código executou sem erro (não travou / não deu exceção).
+- Se `gameValid` = true, significa que o retorno foi aceito pelo jogo ("pedra", "papel" ou "tesoura").
+- Se `gameValid` = false, significa que o retorno NÃO é um valor esperado pelo jogo.
+  Nesse caso, a engine IGNORA o retorno do aluno e aplica um fallback:
+  - `fallback` = "NEXT_AVAILABLE_CARD": o jogo usa a próxima carta disponível na mão do jogador.
+  Ou seja: nesses casos, a rodada não depende da lógica do aluno, e a estratégia fica menos “controlável”.
 
 resultados dos testes:
 
 {results}
 
 Utilizando o resultado acima e usando a técnica CoT
-Analise as saídas do aluno e explique para ele os resultados obtidos.
+Sua tarefa é:
+- Resuma quantos testes tiveram `gameValid=true` e quantos tiveram `gameValid=false`(sem citar essa informação
+interna: 'gameValid') e explique o seu impacto no jogo.
+- Comente sobre a Diversidade das escolhas do aluno e como isso pode impactar no jogo. Por mais que não 
+existam estratégias erradas, uma que retorna sempre a mesma carta pode ser previsível, diferente de uma que 
+tenha uma variedade maior de retornos. 
+
+Tom e postura (MUITO IMPORTANTE):
+- Você NÃO é um “julgador” e NÃO deve tratar como se a solução estivesse “ruim” por padrão.
+- Reconheça o que está bom no código do aluno. Se ele retornou valores válidos com frequência, elogie explicitamente.
+- O aluno pode submeter independente do resultado dos testes. Não diga que “não pode” ou que “está errado” só 
+por usar poucos.
+- Só sugira melhorias se existir uma sugestão clara e útil. Se não houver, diga que a estratégia já está 
+consistente e pronta para submeter.
 
 Gere a resposta seguindo as seguintes regras:
-Forneça uma resposta equilibrada, não seja muito verboso e nem muito direto.
+- Fale em primeira pessoa, como se estivesse conversando com o aluno.
+- Forneça uma resposta equilibrada, não seja muito verboso e nem muito direto.
             
-complete o JSON abaixo:
+sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -236,11 +309,6 @@ complete o JSON abaixo:
 
 
     def validator(self, code: str, assistantStyle: str, function_type: str, openai_api_key: str) -> dict:
-        """
-        Recebe o código do aluno, o estilo do agente, o tipo de função (ex.: "jokenpo1" ou "jokenpo2")
-        e a chave da API da OpenAI. Executa o código para obter a função 'strategy' e chama os testes
-        correspondentes ao tipo da função.
-        """
         local_env = {}
         exec(code, {}, local_env)
         strategy_function = local_env["strategy"]
@@ -255,11 +323,6 @@ complete o JSON abaixo:
 
 
     def run_outputs_tests_jokenpo1(self, code: str, strategy_function: callable, openai_api_key: str, assistantStyle: str) -> dict:
-        """
-        Executa uma série de testes para a função do tipo jokenpo1.
-        Caso ocorra algum erro durante a execução de um teste, chama error_execution para obter
-        uma explicação do erro.
-        """
         test_inputs = [
             ("pedra", "pedra", "papel"),
             ("pedra", "papel", "tesoura"),
@@ -274,7 +337,6 @@ complete o JSON abaixo:
         ]
 
         for i, test_case in enumerate(test_inputs):
-            # Input_data é opcional, mas pode ser usado para log/debug
             input_data = {
                 "card1": test_case[0],
                 "card2": test_case[1],
@@ -292,9 +354,7 @@ complete o JSON abaixo:
     def run_outputs_tests_jokenpo2(self, code: str, strategy_function: callable, openai_api_key: str, assistantStyle: str) -> dict:
         """
         Implementação placeholder para testes do tipo jokenpo2.
-        Caso haja uma lógica diferente para essa variante, implemente-a aqui.
         """
-        # Exemplo simples (pode ser ajustado conforme as necessidades)
         test_inputs = [
             ("pedra", "papel", "tesoura", "pedra"),
             ("papel", "pedra", "papel", "tesoura"),
@@ -323,7 +383,6 @@ complete o JSON abaixo:
         return ""
     
     def feedback_tests_bits(self, code: str, assistantStyle: str, openai_api_key: str) -> dict:
-        # Testes representando variáveis binárias e última jogada do oponente
         test_inputs = [
             (1, 1, 1, 1, None),
             (1, 0, 1, 0, "BIT32"),
@@ -351,21 +410,23 @@ complete o JSON abaixo:
         for test_case in test_inputs:
             try:
                 output = strategy_fn(*test_case)
-
-                if output not in ("BIT8", "BIT16", "BIT32", "FIREWALL"):
+                if output in ("BIT8", "BIT16", "BIT32", "FIREWALL"):
                     results.append({
-                        "input": test_case,
-                        "output": output,
-                        "valid": False,
-                        "error": "Retorno fora do esperado. Use apenas: BIT8, BIT16, BIT32 ou FIREWALL."
-                    })
-                else:
-                    results.append({
-                        "input": test_case,
                         "output": output,
                         "valid": True,
+                        "gameValid": True
+                })
+                else:
+                    results.append({
+                        "output": output,
+                        "valid": True,
+                        "gameValid": False,
+                        "fallback": "NEXT_AVAILABLE_CARD",
+                        "note": (
+                            "Retorno fora do esperado. O jogo ignora esse valor e "
+                            "usa a próxima carta disponível na mão do jogador."
+                        )
                     })
-
             except Exception as err:
                 return self.error_execution(code, err, openai_api_key, assistantStyle)
 
@@ -377,76 +438,158 @@ complete o JSON abaixo:
         if assistantStyle == "VERBOSE":
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-um sistema voltado para alunos iniciantes que estão aprendendo a programar em python,
-por meio de um jogo chamado BITS. O aluno escreve a lógica de uma função strategy para escolher
-uma das quatro cartas possíveis: BIT8, BIT16, BIT32 ou FIREWALL.
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds. 
+Você vai analisar uma série de resultados de testes realizados com a função escrita pelo aluno e os outputs para possíveis 
+cenários do jogo BITS. O ideal, é que os retornos sejam: "BIT8", "BIT16", "BIT32" ou "FIREWALL", 
+para que a sua estratégia seja a mais completa e abrangente possível, entretanto, caso seja um retorno fora 
+do esperado, a escolha da carta usada na rodada passa a não depender da lógica do aluno. Após a análise, 
+pode sugerir que o aluno submeta a função ou possíveis melhorias.
 
-Nos testes abaixo, sua função foi executada com diferentes situações de cartas disponíveis
-(do próprio jogador) e com o valor da última carta do oponente.
-
-Os valores de entrada seguem este formato:
-(bit8, bit16, bit32, firewall, opp_last)
-onde bit8/bit16/bit32/firewall ∈ {{0,1}} e opp_last ∈ {{None, "BIT8", "BIT16", "BIT32", "FIREWALL"}}.
-
-O objetivo é explicar ao aluno como está o desempenho da lógica da função dele.
+Você vai analisar os resultados de testes do modo RUN. Aqui vão algumas explicações sobre o resultado e o que 
+isso representa no jogo:
+- Cada output representa o comportamento da função do aluno para determinado conjunto de entrada.
+- Se `valid` = true, significa que o código executou sem erro (não travou / não deu exceção).
+- Se `gameValid` = true, significa que o retorno foi aceito pelo jogo ("BIT8", "BIT16", "BIT32" ou "FIREWALL").
+- Se `gameValid` = false, significa que o retorno NÃO é um valor esperado pelo jogo.
+  Nesse caso, a engine IGNORA o retorno do aluno e aplica um fallback:
+  - `fallback` = "NEXT_AVAILABLE_CARD": o jogo usa a próxima carta disponível na mão do jogador.
+  Ou seja: nesses casos, a rodada não depende da lógica do aluno, e a estratégia fica menos “controlável”.
 
 resultados dos testes:
 
-    {results}
+{results}
 
-    Utilizando o resultado acima e usando a técnica CoT,
-    Analise as saídas do aluno e explique para ele os resultados obtidos.
+Utilizando o resultado acima e usando a técnica CoT
+Sua tarefa é:
+- Resuma quantos testes tiveram `gameValid=true` e quantos tiveram `gameValid=false`(sem citar essa informação
+interna: 'gameValid') e explique o seu impacto no jogo.
+- Comente sobre a Diversidade das escolhas do aluno e como isso pode impactar no jogo. Por mais que não 
+existam estratégias erradas, uma que retorna sempre a mesma carta pode ser previsível, diferente de uma que 
+tenha uma variedade maior de retornos. 
 
-    Gere a resposta seguindo as seguintes regras:
-    [COLOQUE AS REGRAS VERBOSAS AQUI]
+Tom e postura (MUITO IMPORTANTE):
+- Você NÃO é um “julgador” e NÃO deve tratar como se a solução estivesse “ruim” por padrão.
+- Reconheça o que está bom no código do aluno. Se ele retornou valores válidos com frequência, elogie explicitamente.
+- O aluno pode submeter independente do resultado dos testes. Não diga que “não pode” ou que “está errado” só 
+por usar poucos.
+- Só sugira melhorias se existir uma sugestão clara e útil. Se não houver, diga que a estratégia já está 
+consistente e pronta para submeter.
 
-    complete o JSON abaixo:
-    {{
-        "pensamento": String,
-        "resposta": String
-    }}
+   Gere a resposta seguindo as seguintes regras:
+- Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
+- Use uma linguagem leve e não muito técnica.
+
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
     """
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
-    Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-    um sistema voltado para alunos iniciantes que estão aprendendo a programar em python,
-    por meio de um jogo chamado BITS.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds. 
+Você vai analisar uma série de resultados de testes realizados com a função escrita pelo aluno e os outputs para possíveis 
+cenários do jogo BITS. O ideal, é que os retornos sejam: "BIT8", "BIT16", "BIT32" ou "FIREWALL", 
+para que a sua estratégia seja a mais completa e abrangente possível, entretanto, caso seja um retorno fora 
+do esperado, a escolha da carta usada na rodada passa a não depender da lógica do aluno. Após a análise, 
+pode sugerir que o aluno submeta a função ou possíveis melhorias.
 
-    Aqui estão os resultados dos testes automáticos feitos na função enviada pelo aluno:
+Você vai analisar os resultados de testes do modo RUN. Aqui vão algumas explicações sobre o resultado e o que 
+isso representa no jogo:
+- Cada output representa o comportamento da função do aluno para determinado conjunto de entrada.
+- Se `valid` = true, significa que o código executou sem erro (não travou / não deu exceção).
+- Se `gameValid` = true, significa que o retorno foi aceito pelo jogo ("BIT8", "BIT16", "BIT32" ou "FIREWALL").
+- Se `gameValid` = false, significa que o retorno NÃO é um valor esperado pelo jogo.
+  Nesse caso, a engine IGNORA o retorno do aluno e aplica um fallback:
+  - `fallback` = "NEXT_AVAILABLE_CARD": o jogo usa a próxima carta disponível na mão do jogador.
+  Ou seja: nesses casos, a rodada não depende da lógica do aluno, e a estratégia fica menos “controlável”.
 
-    {results}
+resultados dos testes:
 
-    Utilizando o resultado acima e usando a técnica CoT,
-    Analise rapidamente se os retornos fazem sentido e informe melhorias, se necessário.
+{results}
 
-    [COLOQUE AS REGRAS SUCCINCT AQUI]
+Utilizando o resultado acima e usando a técnica CoT
+Sua tarefa é:
+- Resuma quantos testes tiveram `gameValid=true` e quantos tiveram `gameValid=false`(sem citar essa informação
+interna: 'gameValid') e explique o seu impacto no jogo.
+- Comente sobre a Diversidade das escolhas do aluno e como isso pode impactar no jogo. Por mais que não 
+existam estratégias erradas, uma que retorna sempre a mesma carta pode ser previsível, diferente de uma que 
+tenha uma variedade maior de retornos. 
 
-    complete o JSON abaixo:
-    {{
-        "pensamento": String,
-        "resposta": String
-    }}
+Tom e postura (MUITO IMPORTANTE):
+- Você NÃO é um “julgador” e NÃO deve tratar como se a solução estivesse “ruim” por padrão.
+- Reconheça o que está bom no código do aluno. Se ele retornou valores válidos com frequência, elogie explicitamente.
+- O aluno pode submeter independente do resultado dos testes. Não diga que “não pode” ou que “está errado” só 
+por usar poucos.
+- Só sugira melhorias se existir uma sugestão clara e útil. Se não houver, diga que a estratégia já está 
+consistente e pronta para submeter.
+
+Gere a resposta seguindo as seguintes regras:
+- Fale em primeira pessoa, como se estivesse conversando com o aluno.   
+- Seja extremamente direto. Nada de explicações longas.
+- Sem introduções ou despedidas.
+            
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
     """
         else:  # INTERMEDIATE
             prompt = f"""
-    Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-    um sistema voltado para alunos iniciantes que estão aprendendo a programar em python,
-    por meio do jogo BITS.
+Você é um assistente virtual de programação Python integrado à plataforma Wanda,
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds. 
+Você vai analisar uma série de resultados de testes realizados com a função escrita pelo aluno e os outputs para possíveis 
+cenários do jogo BITS. O ideal, é que os retornos sejam: "BIT8", "BIT16", "BIT32" ou "FIREWALL", 
+para que a sua estratégia seja a mais completa e abrangente possível, entretanto, caso seja um retorno fora 
+do esperado, a escolha da carta usada na rodada passa a não depender da lógica do aluno. Após a análise, 
+pode sugerir que o aluno submeta a função ou possíveis melhorias.
 
-    A seguir estão os resultados de testes aplicados à função strategy do aluno:
+Você vai analisar os resultados de testes do modo RUN. Aqui vão algumas explicações sobre o resultado e o que 
+isso representa no jogo:
+- Cada output representa o comportamento da função do aluno para determinado conjunto de entrada.
+- Se `valid` = true, significa que o código executou sem erro (não travou / não deu exceção).
+- Se `gameValid` = true, significa que o retorno foi aceito pelo jogo ("BIT8", "BIT16", "BIT32" ou "FIREWALL").
+- Se `gameValid` = false, significa que o retorno NÃO é um valor esperado pelo jogo.
+  Nesse caso, a engine IGNORA o retorno do aluno e aplica um fallback:
+  - `fallback` = "NEXT_AVAILABLE_CARD": o jogo usa a próxima carta disponível na mão do jogador.
+  Ou seja: nesses casos, a rodada não depende da lógica do aluno, e a estratégia fica menos “controlável”.
 
-    {results}
+resultados dos testes:
 
-    Utilizando o resultado acima e usando a técnica CoT,
-    Forneça uma análise equilibrada, com orientações claras sobre oportunidades de melhoria.
+{results}
 
-    [COLOQUE AS REGRAS INTERMEDIÁRIAS AQUI]
+Utilizando o resultado acima e usando a técnica CoT
+Sua tarefa é:
+- Resuma quantos testes tiveram `gameValid=true` e quantos tiveram `gameValid=false`(sem citar essa informação
+interna: 'gameValid') e explique o seu impacto no jogo.
+- Comente sobre a Diversidade das escolhas do aluno e como isso pode impactar no jogo. Por mais que não 
+existam estratégias erradas, uma que retorna sempre a mesma carta pode ser previsível, diferente de uma que 
+tenha uma variedade maior de retornos. 
 
-    complete o JSON abaixo:
-    {{
-        "pensamento": String,
-        "resposta": String
-    }}
+Tom e postura (MUITO IMPORTANTE):
+- Você NÃO é um “julgador” e NÃO deve tratar como se a solução estivesse “ruim” por padrão.
+- Reconheça o que está bom no código do aluno. Se ele retornou valores válidos com frequência, elogie explicitamente.
+- O aluno pode submeter independente do resultado dos testes. Não diga que “não pode” ou que “está errado” só 
+por usar poucos.
+- Só sugira melhorias se existir uma sugestão clara e útil. Se não houver, diga que a estratégia já está 
+consistente e pronta para submeter.
+Gere a resposta seguindo as seguintes regras:
+- Fale em primeira pessoa, como se estivesse conversando com o aluno.
+- Forneça uma resposta equilibrada, não seja muito verboso e nem muito direto.
+            
+sempre gere como saída um JSON no formato abaixo:
+{{
+    "pensamento": String,
+    "resposta": String
+}}
     """
 
         answer = ask_openai(prompt, openai_api_key)
@@ -459,9 +602,11 @@ resultados dos testes:
         if assistantStyle == "VERBOSE":
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
-            
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
+Abaixo o código de um aluno que apresentou algum tipo de erro.
+        
 O código do aluno:
 {code}
 
@@ -475,8 +620,10 @@ Gere a resposta seguindo as seguintes regras:
 Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
 Use uma linguagem leve e não muito técnica.
 Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
-            
-complete o JSON abaixo:
+Não apresente o código corrigido por completo. Ao invés disso, explique o que houve e como corrigir, 
+dando pistas específicas, mas sem reescrever todo o código.
+
+sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -485,8 +632,10 @@ complete o JSON abaixo:
         elif assistantStyle == "SUCCINCT":
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
+Abaixo o código de um aluno que apresentou algum tipo de erro.
 
 O código do aluno:
 {code}
@@ -496,7 +645,7 @@ Erro do python durante a execução do código:
 
 Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
 explique para o aluno o motivo do erro.
-            
+        
 Gere a resposta seguindo as seguintes regras:
 Seja extremamente direto. Nada de explicações longas.
 Sem introduções ou despedidas.
@@ -504,7 +653,7 @@ Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
 Dê uma pista para corrigir, mas de forma sucinta.
 Não apresente o código corrigido.
             
-complete o JSON abaixo:
+sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -513,8 +662,10 @@ complete o JSON abaixo:
         else:  # INTERMEDIATE
             prompt = f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
-um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de um
-jogo chamado Jokenpo. O jogo tem duas funções que o aluno precisa implementar o código.
+um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
+jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
+Abaixo o código de um aluno que apresentou algum tipo de erro.
             
 O código do aluno:
 {code}
@@ -524,13 +675,13 @@ Erro do python durante a execução do código:
             
 Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
 explique para o aluno o motivo do erro.
-            
+        
 Gere a resposta seguindo as seguintes regras:
 Utilize snippets de código para mostrar o erro e como corrigir.
 Especifique a linha onde o erro aconteceu.
 O snippet deve conter apenas a correção da linha onde ocorreu o código.
             
-complete o JSON abaixo:
+sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
     "resposta": String
@@ -538,3 +689,40 @@ complete o JSON abaixo:
 """
         answer = ask_openai(prompt, openai_api_key)
         return answer
+    
+
+    def validator_bits(self, code: str, assistantStyle: str, openai_api_key: str) -> dict:
+        local_env = {}
+        try:
+            exec(code, {}, local_env)
+        except Exception as err:
+            return self.error_execution(code, err, openai_api_key, assistantStyle)
+
+        strategy_fn = local_env.get("strategy")
+        if not strategy_fn:
+            return {
+                "pensamento": "",
+                "resposta": "Função 'strategy' não encontrada no seu código. "
+                            "Verifique o nome da função e tente novamente."
+            }
+
+        test_inputs = [
+            (1, 1, 1, 1, None),
+            (1, 0, 1, 0, "BIT32"),
+            (0, 1, 1, 1, "BIT16"),
+            (1, 1, 0, 1, "FIREWALL"),
+            (0, 1, 0, 1, "BIT8"),
+            (1, 0, 0, 1, "BIT16"),
+            (0, 0, 1, 0, "BIT32"),
+            (1, 1, 0, 0, "BIT8"),
+            (0, 0, 0, 1, None),
+            (0, 1, 0, 0, "BIT32"),
+        ]
+
+        for test_case in test_inputs:
+            try:
+                _ = strategy_fn(*test_case)
+            except Exception as err:
+                return self.error_execution(code, err, openai_api_key, assistantStyle)
+
+        return ""
