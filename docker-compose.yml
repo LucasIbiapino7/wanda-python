@@ -1,13 +1,29 @@
 services:
-  app:
+  wanda-python:
+    image: wanda-python
+    container_name: wanda-python
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: wanda_python
     ports:
-      - "8002:8002"
-    volumes:
-      - .:/app
-    environment:
-      - PYTHONUNBUFFERED=1 
+      - "8000:8000"
     command: uvicorn wanda_python.app:app --host 0.0.0.0 --port 8000
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SERVICE_NAME=wanda-python
+      - LOG_FORMAT=json
+      - LOG_LEVEL=INFO
+      - OTEL_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=wanda-python
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - wanda-network
+
+networks:
+  wanda-network:
+    external: true

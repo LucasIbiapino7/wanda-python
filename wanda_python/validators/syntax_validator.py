@@ -1,35 +1,46 @@
 import openai
 import json
 from openai import OpenAIError
+import logging
+from opentelemetry import trace
+
+logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 def ask_openai(prompt: str, api_key: str) -> dict:
-    """
-    Centraliza a chamada à API OpenAI para respostas JSON.
-    Retorna sempre um dict com as chaves 'pensamento' e 'resposta'.
-    """
-    client = openai.OpenAI(api_key=api_key)
+    with tracer.start_as_current_span("openai.chat") as span:
+        span.set_attribute("openai.model", "gpt-4o-mini")
+        span.set_attribute("openai.prompt_length", len(prompt))
 
-    # Mensagem de sistema que garante saída exclusiva em JSON
-    system_msg = {
-        "role": "system",
-        "content": (
-            'Responda EXCLUSIVAMENTE com um objeto JSON contendo '  
-            'as chaves "pensamento" e "resposta". Nada fora das chaves.'
-        )
-    }
+        client = openai.OpenAI(api_key=api_key)
 
-    try:
-        answer = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[system_msg, {"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            max_tokens=300,
-        )
-        return json.loads(answer.choices[0].message.content)
+        system_msg = {
+            "role": "system",
+            "content": (
+                'Responda EXCLUSIVAMENTE com um objeto JSON contendo '
+                'as chaves "pensamento" e "resposta". Nada fora das chaves.'
+            )
+        }
 
-    except OpenAIError as e:
-        print(f"Erro na API OpenAI: {e}")
-        return {"pensamento": "", "resposta": ""}
+        try:
+            answer = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[system_msg, {"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                max_tokens=300,
+            )
+
+            span.set_attribute("openai.tokens_total", answer.usage.total_tokens)
+            span.set_attribute("openai.tokens_prompt", answer.usage.prompt_tokens)
+            span.set_attribute("openai.tokens_completion", answer.usage.completion_tokens)
+
+            return json.loads(answer.choices[0].message.content)
+
+        except OpenAIError as e:
+            span.record_exception(e)
+            span.set_status(trace.StatusCode.ERROR)
+            logger.error("Erro na chamada OpenAI", exc_info=True)
+            return {"pensamento": "", "resposta": ""}
 
 class SyntaxValidator:
 

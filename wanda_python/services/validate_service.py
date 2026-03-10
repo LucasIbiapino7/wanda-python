@@ -6,6 +6,9 @@ from wanda_python.validators.malicious_checker import MaliciousChecker
 from wanda_python.validators.execution_validator import ExecutionValidator
 from wanda_python.validators.semantics_validator import SemanticsValidator
 from ..games.router import resolve_pipeline
+import logging
+
+logger = logging.getLogger(__name__)
 
 import json
 
@@ -24,10 +27,12 @@ class ValidateService:
         self.semantics_validator = SemanticsValidator()
 
     async def validate(self, data: ValidateRequest) -> ValidateResponse:
+        logger.info('Validacao iniciada. game=%s function=%s', data.gameName, data.functionName)
         code = data.code  # Pega a função
         # 1 Validação: Sintaxe e indentação
         response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
         if response_validate:
+            logger.info('Validacao reprovada na sintaxe. game=%s function=%s', data.gameName, data.functionName)
             thought = response_validate["pensamento"]
             answer = response_validate["resposta"]
             return ValidateResponse.create(valid=False, answer=answer, thought=thought)
@@ -35,6 +40,7 @@ class ValidateService:
         # 2 Validação: Verificando comandos maliciosos
         malicious_errors = self.malicious_checker.validate(tree)
         if malicious_errors:
+            logger.warning('Codigo malicioso detectado. game=%s function=%s', data.gameName, data.functionName)
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
         # 3 Validação: Assinatura e execução de testes via pipeline
         _, pipeline = resolve_pipeline(data.gameName, data.functionName)
@@ -54,18 +60,22 @@ class ValidateService:
 
         # 4 Validação: erro de execução
         if execution_errors:
+            logger.info('Validacao reprovada na pipeline. game=%s function=%s', data.gameName, data.functionName)
             thought = execution_errors["pensamento"]
             answer = execution_errors["resposta"]
             return ValidateResponse.create(valid=False, answer=answer, thought=thought)
 
         # Passou em todas as validações
+        logger.info('Validacao aprovada. game=%s function=%s', data.gameName, data.functionName)
         return ValidateResponse.create(valid=True, answer="aceita", thought="")
     # service -> Feedback
     async def feedback(self, data: ValidateRequest) -> ValidateResponse:
+        logger.info('Feedback iniciado. game=%s function=%s style=%s', data.gameName, data.functionName, data.assistantStyle)
         code = data.code # Pega a função
         # 1 Validação: Sintaxe e indentação
         response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
         if response_validate:
+            logger.info('Feedback: reprovado na sintaxe. game=%s function=%s', data.gameName, data.functionName)
             thought = response_validate["pensamento"]
             answer = response_validate["resposta"]
             return ValidateResponse.create(valid=False, answer=answer, thought=thought)
@@ -81,6 +91,7 @@ class ValidateService:
         # 3 Validação: Verificando comandos maliciosos
         malicious_errors = self.malicious_checker.validate(tree)
         if malicious_errors:
+            logger.warning('Codigo malicioso detectado. game=%s function=%s', data.gameName, data.functionName)
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
 
         # Caso passe em todas as validações, faz uma validação da semântica
@@ -100,17 +111,20 @@ class ValidateService:
         )
         # result: {"valid": bool, "answer": str, "thought": str}
 
+        logger.info('Feedback concluido. game=%s function=%s valid=%s', data.gameName, data.functionName, out.get('valid'))
         return ValidateResponse.create(valid=bool(out.get("valid", False)), answer=str(out.get("answer", "")),
             thought=str(out.get("thought", ""))
         )
     
     # Run 
     async def run(self, data: ValidateRequest) -> ValidateResponse:
+        logger.info('Run iniciado. game=%s function=%s', data.gameName, data.functionName)
         code = data.code
 
         # 1) Sintaxe
         response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
         if response_validate:
+            logger.warning('Run: erro de sintaxe no parse AST. game=%s function=%s', data.gameName, data.functionName)
             return ValidateResponse.create(
                 valid=False,
                 answer=response_validate.get("resposta", ""),
@@ -126,6 +140,7 @@ class ValidateService:
         # 3) Malicioso
         malicious_errors = self.malicious_checker.validate(tree)
         if malicious_errors:
+            logger.warning('Codigo malicioso detectado. game=%s function=%s', data.gameName, data.functionName)
             return ValidateResponse.create(False, malicious_errors, "")
 
         # 4) Pipeline -> RUN
@@ -137,6 +152,7 @@ class ValidateService:
             openai_api_key=self.openai_api_key
         )
 
+        logger.info('Run concluido. game=%s function=%s valid=%s', data.gameName, data.functionName, out.get('valid'))
         return ValidateResponse.create(
             valid=bool(out.get("valid", False)),
             answer=str(out.get("answer", "")),

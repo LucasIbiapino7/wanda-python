@@ -1,1 +1,26 @@
+# Env
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+# Virtualenv / Poetry
+.venv/
+venv/
+.cache/
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# IDEs
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
