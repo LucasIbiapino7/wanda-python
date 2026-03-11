@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from wanda_python.controllers import validate_controller
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor

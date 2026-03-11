@@ -41,3 +41,4 @@ opentelemetry-sdk==1.33.0
 opentelemetry-instrumentation-fastapi==0.54b0
 opentelemetry-exporter-otlp-proto-grpc==1.33.0
 python-json-logger>=2.0.7
+python-dotenv==1.1.0

@@ -11,11 +11,11 @@ services:
     command: uvicorn wanda_python.app:app --host 0.0.0.0 --port 8000
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - SERVICE_NAME=wanda-python
-      - LOG_FORMAT=json
-      - LOG_LEVEL=INFO
-      - OTEL_ENDPOINT=http://otel-collector:4317
-      - OTEL_SERVICE_NAME=wanda-python
+      - SERVICE_NAME=${SERVICE_NAME}
+      - LOG_FORMAT=${LOG_FORMAT}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - OTEL_ENDPOINT=${OTEL_ENDPOINT}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME}
     logging:
       driver: json-file
       options:
