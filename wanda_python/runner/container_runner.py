@@ -2,51 +2,54 @@ import subprocess
 import uuid
 import os
 import logging
-import tempfile
-
-tmp_dir = tempfile.gettempdir()
-tmp_path = os.path.join(tmp_dir, f"wanda_{uuid.uuid4().hex}.py")
 
 logger = logging.getLogger(__name__)
+
+RUNNER_TMP_DIR = "/tmp/wanda_runner"
+RUNNER_VOLUME_NAME = "wanda_runner_tmp"
 
 def _execute_in_container(script: str, timeout: int = 5) -> dict:
     # nome único pro arquivo temporário
     # uuid para evitar colisoes em simultaneos
-    tmp_dir = tempfile.gettempdir()
-    tmp_path = os.path.join(tmp_dir, f"wanda_{uuid.uuid4().hex}.py")
+    os.makedirs(RUNNER_TMP_DIR, exist_ok=True)
+
+    filename = f"wanda_{uuid.uuid4().hex}.py"
+    tmp_path = os.path.join(RUNNER_TMP_DIR, filename)
     container_name = f"wanda_runner_{uuid.uuid4().hex}"
 
     logger.info("Iniciando container. nome=%s", container_name)
 
     try:
-        #  escreve o script em /tmp do host
+        # escreve o script no diretório compartilhado
         with open(tmp_path, "w", encoding="utf-8") as f:
             f.write(script)
 
-        # executa o container protecoes
+        # executa o container com protecoes
         result = subprocess.run(
             [
-                "docker", "run", "--rm", # remove o container ao terminar
-                "--network", "none", # sem acesso à internet
-                "--name", container_name, # nome
-                "--memory", "128m", # limite de memória
-                "--cpus", "0.5", # limite de CPU
-                "--user", "65534:65534", # roda como usuario sem privilegios
-                "--cap-drop", "ALL", # remove capacidades extras do container
-                "--security-opt", "no-new-privileges", # impede escalacao de privilegios
-                "--pids-limit", "64", # limita quantidade de processos
-                "--read-only", 
-                "-v", f"{tmp_path}:/app/script.py:ro", # monta apenas o arquivo em modo leitura
-                "python:3.11-alpine", # imagem
-                "python", "/app/script.py" # executa o arquivo dentro do container
+                "docker", "run", "--rm",  # remove o container ao terminar
+                "--network", "none",  # sem acesso à internet
+                "--name", container_name,  # nome
+                "--memory", "128m",  # limite de memória
+                "--cpus", "0.5",  # limite de CPU
+                "--user", "65534:65534",  # roda como usuario sem privilegios
+                "--cap-drop", "ALL",  # remove capacidades extras do container
+                "--security-opt", "no-new-privileges",  # impede escalacao de privilegios
+                "--pids-limit", "64",  # limita quantidade de processos
+                "--read-only",
+                "-v", f"{RUNNER_VOLUME_NAME}:/scripts:ro",  # monta o volume nomeado em modo leitura
+                "python:3.11-alpine",  # imagem
+                "python", f"/scripts/{filename}"  # executa o arquivo dentro do container
             ],
-            capture_output=True, # captura stdout e stderr
-            text=True, # retorna como string
-            timeout=timeout # mata se demorar mais que timeout segundos
+            capture_output=True,  # captura stdout e stderr
+            text=True,  # retorna como string
+            timeout=timeout  # mata se demorar mais que timeout segundos
         )
 
-        logger.info("Container finalizado. nome=%s returncode=%s", 
-                    container_name, result.returncode)
+        logger.info(
+            "Container finalizado. nome=%s returncode=%s",
+            container_name, result.returncode
+        )
 
         # retorna resultado estruturado
         return {
@@ -63,7 +66,7 @@ def _execute_in_container(script: str, timeout: int = 5) -> dict:
         logger.error("Timeout. Matando container. nome=%s", container_name)
         subprocess.run(
             ["docker", "kill", container_name],
-            capture_output=True, # silencia o output
+            capture_output=True,  # silencia o output
             text=True,
             check=False
         )
@@ -109,6 +112,7 @@ for i, args in enumerate(test_cases):
 sys.exit(0)
 """
 
+
 def run_submit(code: str, test_cases: list, timeout: int = 5) -> dict:
     script = _build_submit_script(code, test_cases)
     return _execute_in_container(script, timeout)
@@ -147,6 +151,7 @@ print(json.dumps(results))
 sys.exit(0)
 """
 
+
 def run_tests(code, test_cases, valid_returns, timeout=5):
     script = _build_run_script(code, test_cases, valid_returns)
     result = _execute_in_container(script, timeout)
@@ -164,5 +169,5 @@ def run_tests(code, test_cases, valid_returns, timeout=5):
         result["ok"] = False
         result["stderr"] = "Erro interno ao processar resultado."
         result["results"] = []
-    
+
     return result

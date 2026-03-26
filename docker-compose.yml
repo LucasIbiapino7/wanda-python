@@ -16,6 +16,9 @@ services:
       - LOG_LEVEL=${LOG_LEVEL}
       - OTEL_ENDPOINT=${OTEL_ENDPOINT}
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner_tmp:/tmp/wanda_runner
     logging:
       driver: json-file
       options:
@@ -23,6 +26,10 @@ services:
         max-file: "3"
     networks:
       - wanda-network
+
+volumes:
+  runner_tmp:
+    name: wanda_runner_tmp
 
 networks:
   wanda-network:
