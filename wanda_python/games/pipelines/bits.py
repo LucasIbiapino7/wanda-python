@@ -5,6 +5,7 @@ from ...validators.signature_validator import SignatureValidator
 from ...validators.semantics_validator import SemanticsValidator
 from ...validators.execution_validator import ExecutionValidator
 from ..registry import GameSpec
+from ...runner.container_runner import run_submit
 
 def _normalize_style(style: str) -> str:
     s = (style or "").strip().upper()
@@ -112,17 +113,42 @@ class BitsPipeline:
                 "thought": ""
             }
 
-        # 3) Execução de testes 
-        exec_result = self._execution.validator_bits(code=code, assistantStyle=style, openai_api_key=openai_api_key)
+        # 3) Execução de testes via container
+        test_cases = [
+            [1, 1, 1, 1, None],
+            [1, 0, 1, 0, "BIT32"],
+            [0, 1, 1, 1, "BIT16"],
+            [1, 1, 0, 1, "FIREWALL"],
+            [0, 1, 0, 1, "BIT8"],
+            [1, 0, 0, 1, "BIT16"],
+            [0, 0, 1, 0, "BIT32"],
+            [1, 1, 0, 0, "BIT8"],
+            [0, 0, 0, 1, None],
+            [0, 1, 0, 0, "BIT32"],
+        ]
 
-        # Se retornou dicionário = erro 
-        if isinstance(exec_result, dict) and (
-            "pensamento" in exec_result or "resposta" in exec_result
-        ):
+        result = run_submit(code=code, test_cases=test_cases)
+
+        # timeout — mensagem fixa, sem OpenAI
+        if result["timed_out"]:
             return {
                 "valid": False,
-                "answer": str(exec_result.get("resposta", "")),
-                "thought": str(exec_result.get("pensamento", ""))
+                "answer": "Sua função demorou demais para executar. Verifique se há loops infinitos.",
+                "thought": ""
+            }
+
+        # erro de execução — passa pro OpenAI explicar
+        if not result["ok"]:
+            error_dict = self._execution.error_execution(
+                code=code,
+                erro=result["stderr"],
+                openai_api_key=openai_api_key,
+                assistantStyle=style
+            )
+            return {
+                "valid": False,
+                "answer": str(error_dict.get("resposta", "")),
+                "thought": str(error_dict.get("pensamento", ""))
             }
 
         # 4) Se passou em tudo = aceito
