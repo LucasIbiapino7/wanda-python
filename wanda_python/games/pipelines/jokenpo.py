@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from ...validators.signature_validator import SignatureValidator
 from ...validators.semantics_validator import SemanticsValidator
 from ...validators.execution_validator import ExecutionValidator
-from ...runner.container_runner import run_submit
+from ...runner.container_runner import run_submit, run_tests
 
 from ..registry import GameSpec
 
@@ -87,11 +87,10 @@ class JokenpoPipeline:
     
 
     #RUN 
-    async def run(self,code: str,assistant_style: str,function_name: str, openai_api_key: str) -> Dict[str, Any]:
-
+    async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         style = _normalize_style(assistant_style)
 
-        # 1) AST para assinatura
+        # 1) AST
         tree = self._parse_ast(code)
         if tree is None:
             return {
@@ -101,16 +100,85 @@ class JokenpoPipeline:
             }
 
         # 2) Assinatura
-        sig_msg = self._signature.validate_signature_and_parameters(tree=tree,assistant_style=style,function_type=function_name)
+        sig_msg = self._signature.validate_signature_and_parameters(
+            tree=tree, assistant_style=style, function_type=function_name
+        )
         if sig_msg:
-            return { "valid": False, "answer": sig_msg, "thought": "" }
+            return {"valid": False, "answer": sig_msg, "thought": ""}
 
-        tests = self._execution.feedback_tests(code=code,assistantStyle=style, function_type=function_name,openai_api_key=openai_api_key )
+        # 3) Execução de testes via container
+        test_cases_by_function = {
+            "jokenpo1": [
+                ["pedra", "pedra", "papel"],
+                ["pedra", "papel", "tesoura"],
+                ["papel", "papel", "pedra"],
+                ["tesoura", "tesoura", "papel"],
+                ["pedra", "papel", "papel"],
+                ["tesoura", "papel", "tesoura"],
+                ["papel", "pedra", "pedra"],
+                ["tesoura", "papel", "papel"],
+                ["papel", "tesoura", "tesoura"],
+                ["pedra", "tesoura", "pedra"],
+            ],
+            "jokenpo2": [
+                ["pedra", "papel", "tesoura", "pedra"],
+                ["papel", "pedra", "papel", "tesoura"],
+                ["tesoura", "tesoura", "pedra", "papel"],
+                ["pedra", "pedra", "papel", "tesoura"],
+                ["papel", "papel", "pedra", "tesoura"],
+                ["tesoura", "tesoura", "pedra", "papel"],
+                ["pedra", "papel", "pedra", "tesoura"],
+                ["pedra", "tesoura", "papel", "papel"],
+                ["papel", "tesoura", "pedra", "pedra"],
+                ["pedra", "tesoura", "tesoura", "papel"],
+            ]
+        }
+
+        valid_returns = ["pedra", "papel", "tesoura"]
+        test_cases = test_cases_by_function.get(function_name, [])
+
+        result = run_tests(code=code, test_cases=test_cases, valid_returns=valid_returns)
+
+        if result["timed_out"]:
+            return {
+                "valid": False,
+                "answer": "Sua função demorou demais para executar. Verifique se há loops infinitos.",
+                "thought": ""
+            }
+
+        if not result["ok"]:
+            error_dict = self._execution.error_execution(
+                code=code, erro=result["stderr"],
+                openai_api_key=openai_api_key, assistantStyle=style
+            )
+            return {
+                "valid": False,
+                "answer": str(error_dict.get("resposta", "")),
+                "thought": str(error_dict.get("pensamento", ""))
+            }
+
+        # verifica se algum caso teve erro de execução
+        first_error = next((r for r in result["results"] if not r["valid"]), None)
+        if first_error:
+            error_dict = self._execution.error_execution(
+                code=code, erro=first_error.get("error", "Erro de execução"),
+                openai_api_key=openai_api_key, assistantStyle=style
+            )
+            return {
+                "valid": False,
+                "answer": str(error_dict.get("resposta", "")),
+                "thought": str(error_dict.get("pensamento", ""))
+            }
+
+        # 4) passa os resultados pro prompt
+        tests = self._execution.feedback_outputs_tests_jokenpo(
+            result["results"], openai_api_key, style
+        )
 
         thought = str(tests.get("pensamento", "")) if isinstance(tests, dict) else ""
         answer = str(tests.get("resposta", "")) if isinstance(tests, dict) else ""
 
-        return { "valid": True, "answer": answer, "thought": thought }
+        return {"valid": True, "answer": answer, "thought": thought}
 
     async def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         style = _normalize_style(assistant_style)
