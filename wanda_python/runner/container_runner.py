@@ -132,18 +132,22 @@ results = []
 for i, args in enumerate(test_cases):
     try:
         output = strategy(*args)
-        results.append({{
-            "index": i,
-            "ok": True,
+        game_valid = output in valid_returns
+        entry = {{
             "output": output,
-            "gameValid": output in valid_returns
-        }})
+            "valid": True,
+            "gameValid": game_valid
+        }}
+        if not game_valid:
+            entry["fallback"] = "NEXT_AVAILABLE_CARD"
+            entry["note"] = "Retorno fora do esperado. O jogo ignora esse valor e usa a próxima carta disponível na mão do jogador."
+        results.append(entry)
     except Exception as e:
         results.append({{
-            "index": i,
-            "ok": False,
-            "error": str(e),
-            "gameValid": False
+            "output": None,
+            "valid": False,
+            "gameValid": False,
+            "error": str(e)
         }})
         break
 
@@ -160,7 +164,6 @@ def run_tests(code, test_cases, valid_returns, timeout=5):
         return result
 
     import json
-    # pega so a ultima linha
     last_line = result["stdout"].strip().split("\n")[-1]
     try:
         result["results"] = json.loads(last_line)
