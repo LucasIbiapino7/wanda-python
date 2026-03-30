@@ -5,6 +5,7 @@ from ...validators.signature_validator import SignatureValidator
 from ...validators.semantics_validator import SemanticsValidator
 from ...validators.execution_validator import ExecutionValidator
 from ..registry import GameSpec
+from ...runner.container_runner import run_submit, run_tests
 
 def _normalize_style(style: str) -> str:
     s = (style or "").strip().upper()
@@ -69,7 +70,8 @@ class BitsPipeline:
 
     async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         style = _normalize_style(assistant_style)
-        
+
+        # 1) AST
         tree = self._parse_ast(code)
         if tree is None:
             return {
@@ -78,13 +80,63 @@ class BitsPipeline:
                 "thought": ""
             }
 
-        # Assinatura
-        sig_msg = self._signature.validate_bits_signature(tree=tree,assistant_style=style,spec=self.spec)
+        # 2) Assinatura
+        sig_msg = self._signature.validate_bits_signature(tree=tree, assistant_style=style, spec=self.spec)
         if sig_msg:
             return {"valid": False, "answer": sig_msg, "thought": ""}
 
-        # testes do jogo
-        tests = self._execution.feedback_tests_bits(code=code, assistantStyle=style, openai_api_key=openai_api_key)
+        # 3) Execução de testes via container
+        test_cases = [
+            [1, 1, 1, 1, None],
+            [1, 0, 1, 0, "BIT32"],
+            [0, 1, 1, 1, "BIT16"],
+            [1, 1, 0, 1, "FIREWALL"],
+            [0, 1, 0, 1, "BIT8"],
+            [1, 0, 0, 1, "BIT16"],
+            [0, 0, 1, 0, "BIT32"],
+            [1, 1, 0, 0, "BIT8"],
+            [0, 0, 0, 1, None],
+            [0, 1, 0, 0, "BIT32"],
+        ]
+        valid_returns = ["BIT8", "BIT16", "BIT32", "FIREWALL"]
+
+        result = run_tests(code=code, test_cases=test_cases, valid_returns=valid_returns)
+
+        if result["timed_out"]:
+            return {
+                "valid": False,
+                "answer": "Sua função demorou demais para executar. Verifique se há loops infinitos.",
+                "thought": ""
+            }
+
+        if not result["ok"]:
+            error_dict = self._execution.error_execution(
+                code=code, erro=result["stderr"],
+                openai_api_key=openai_api_key, assistantStyle=style
+            )
+            return {
+                "valid": False,
+                "answer": str(error_dict.get("resposta", "")),
+                "thought": str(error_dict.get("pensamento", ""))
+            }
+
+        # verifica se algum caso teve erro de execução
+        first_error = next((r for r in result["results"] if not r["valid"]), None)
+        if first_error:
+            error_dict = self._execution.error_execution(
+                code=code, erro=first_error.get("error", "Erro de execução"),
+                openai_api_key=openai_api_key, assistantStyle=style
+            )
+            return {
+                "valid": False,
+                "answer": str(error_dict.get("resposta", "")),
+                "thought": str(error_dict.get("pensamento", ""))
+            }
+
+        # 4) passa os resultados pro prompt
+        tests = self._execution.feedback_outputs_tests_bits(
+            result["results"], openai_api_key, style
+        )
 
         thought = str(tests.get("pensamento", "")) if isinstance(tests, dict) else ""
         answer = str(tests.get("resposta", "")) if isinstance(tests, dict) else ""
@@ -112,17 +164,42 @@ class BitsPipeline:
                 "thought": ""
             }
 
-        # 3) Execução de testes 
-        exec_result = self._execution.validator_bits(code=code, assistantStyle=style, openai_api_key=openai_api_key)
+        # 3) Execução de testes via container
+        test_cases = [
+            [1, 1, 1, 1, None],
+            [1, 0, 1, 0, "BIT32"],
+            [0, 1, 1, 1, "BIT16"],
+            [1, 1, 0, 1, "FIREWALL"],
+            [0, 1, 0, 1, "BIT8"],
+            [1, 0, 0, 1, "BIT16"],
+            [0, 0, 1, 0, "BIT32"],
+            [1, 1, 0, 0, "BIT8"],
+            [0, 0, 0, 1, None],
+            [0, 1, 0, 0, "BIT32"],
+        ]
 
-        # Se retornou dicionário = erro 
-        if isinstance(exec_result, dict) and (
-            "pensamento" in exec_result or "resposta" in exec_result
-        ):
+        result = run_submit(code=code, test_cases=test_cases)
+
+        # timeout — mensagem fixa, sem OpenAI
+        if result["timed_out"]:
             return {
                 "valid": False,
-                "answer": str(exec_result.get("resposta", "")),
-                "thought": str(exec_result.get("pensamento", ""))
+                "answer": "Sua função demorou demais para executar. Verifique se há loops infinitos.",
+                "thought": ""
+            }
+
+        # erro de execução — passa pro OpenAI explicar
+        if not result["ok"]:
+            error_dict = self._execution.error_execution(
+                code=code,
+                erro=result["stderr"],
+                openai_api_key=openai_api_key,
+                assistantStyle=style
+            )
+            return {
+                "valid": False,
+                "answer": str(error_dict.get("resposta", "")),
+                "thought": str(error_dict.get("pensamento", ""))
             }
 
         # 4) Se passou em tudo = aceito
