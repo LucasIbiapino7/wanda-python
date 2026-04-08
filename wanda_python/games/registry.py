@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List
+from .pipelines.bits import BitsPipeline
+from .pipelines.bits import JokenpoPipeline
 
 @dataclass(frozen=True)
 class GameSpec:
@@ -9,6 +11,7 @@ class GameSpec:
     signature: Dict[str, List[str]]
     valid_returns: Dict[str, List[str]]
     prompts_key: str
+    pipeline_class: type
 
 REGISTRY: Dict[str, GameSpec] = {
     "JOKENPO": GameSpec(
@@ -23,7 +26,8 @@ REGISTRY: Dict[str, GameSpec] = {
             "jokenpo1": ["colocar aqui os retornos"],
             "jokenpo2": ["colocar aqui os retornos"]
         },
-        prompts_key="jokenpo"
+        prompts_key="jokenpo",
+        pipeline_class=JokenpoPipeline()
     ),
     "BITS": GameSpec(
         name="BITS",
@@ -35,6 +39,7 @@ REGISTRY: Dict[str, GameSpec] = {
         valid_returns={
             "strategy": ["BIT8", "BIT16", "BIT32", "FIREWALL"]
         },
-        prompts_key="bits"
+        prompts_key="bits",
+        pipeline_class=BitsPipeline()
     )
 }
