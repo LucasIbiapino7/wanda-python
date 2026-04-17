@@ -117,7 +117,7 @@ sys.exit(0)
 """
 
 
-def run_submit(code: str, test_cases: list, timeout: int = 5) -> dict:
+def run_submit(code: str, test_cases: list, timeout: int = 30) -> dict:
     script = _build_submit_script(code, test_cases)
     return _execute_in_container(script, timeout)
 
@@ -187,19 +187,31 @@ def _build_session_script(code_p1: str, code_p2: str) -> str:
     Gera o script que roda dentro do container durante toda a partida.
     Fica em loop lendo um JSON por linha do stdin, executa as duas
     estratégias e escreve um JSON por linha no stdout.
+
+    sys.stdout é redirecionado para /dev/null antes de carregar o código
+    dos jogadores — qualquer print dentro das strategies é silenciado.
+    O stdout real é preservado em _real_stdout e usado exclusivamente
+    para o protocolo JSON de comunicação com o Java.
     """
     return f"""\
 import json
 import sys
- 
+import os
+
+# preserva o stdout real — canal de comunicação com o Java
+_real_stdout = sys.stdout
+
+# redireciona sys.stdout para /dev/null — silencia prints dos jogadores
+sys.stdout = open(os.devnull, "w")
+
 # --- código do jogador 1 ---
 {code_p1}
 strategy_p1 = strategy
- 
+
 # --- código do jogador 2 ---
 {code_p2}
 strategy_p2 = strategy
- 
+
 # loop de partida: 1 linha de input = 1 round
 for line in sys.stdin:
     line = line.strip()
@@ -209,9 +221,11 @@ for line in sys.stdin:
         params = json.loads(line)
         r1 = strategy_p1(*params["p1"])
         r2 = strategy_p2(*params["p2"])
-        print(json.dumps({{"p1": r1, "p2": r2}}), flush=True)
+        _real_stdout.write(json.dumps({{"p1": r1, "p2": r2}}) + "\\n")
+        _real_stdout.flush()
     except Exception as e:
-        print(json.dumps({{"error": str(e)}}), flush=True)
+        _real_stdout.write(json.dumps({{"error": str(e)}}) + "\\n")
+        _real_stdout.flush()
 """
 
 
