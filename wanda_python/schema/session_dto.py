@@ -29,9 +29,11 @@ class SessionExecuteResponseDTO(BaseModel):
 
     @classmethod
     def create(cls, result: dict):
+        p1 = result.get("player1Choice")
+        p2 = result.get("player2Choice")
         return cls(
-            player1Choice=result.get("player1Choice"),
-            player2Choice=result.get("player2Choice"),
+            player1Choice=p1 if isinstance(p1, str) else None,
+            player2Choice=p2 if isinstance(p2, str) else None,
             error=result.get("error"),
             errorDetail=result.get("errorDetail"),
         )
