@@ -171,12 +171,41 @@ class JokenpoPipeline:
             }
 
         # 4) passa os resultados pro prompt
+        param_names = {
+            "jokenpo1": ["card1", "card2", "card3"],
+            "jokenpo2": ["card1", "card2", "opponentCard1", "opponentCard2"]
+        }
+        names = param_names.get(function_name, [])
+        for i, r in enumerate(result["results"]):
+            if i < len(test_cases):
+                r["inputs"] = dict(zip(names, test_cases[i]))
+
         tests = self._execution.feedback_outputs_tests_jokenpo(
             result["results"], openai_api_key, style
         )
 
         thought = str(tests.get("pensamento", "")) if isinstance(tests, dict) else ""
-        answer = str(tests.get("resposta", "")) if isinstance(tests, dict) else ""
+        llm_answer = str(tests.get("resposta", "")) if isinstance(tests, dict) else ""
+
+        linhas = []
+        for i, r in enumerate(result["results"], 1):
+            inp = r.get("inputs", {})
+            out = r.get("output")
+            game_valid = r.get("gameValid", False)
+            if out is None:
+                retorno = "não retornou nenhuma carta ✗"
+            elif not game_valid:
+                retorno = f'retornou "{out}" — não é uma carta válida ✗'
+            else:
+                retorno = f'retornou "{out}" ✓'
+            entrada = ", ".join(f'{k}="{v}"' for k, v in inp.items()) if inp else ""
+            linhas.append(f"Teste {i}: {entrada} → {retorno}")
+
+        tabela_final = "\n".join(linhas)
+        validos_count = sum(1 for r in result["results"] if r.get("gameValid"))
+        total_count = len(result["results"])
+        cabecalho = f"Resultados dos testes ({validos_count} de {total_count} retornaram uma carta válida):\n\n"
+        answer = cabecalho + tabela_final + "\n\n" + llm_answer
 
         return {"valid": True, "answer": answer, "thought": thought}
 
