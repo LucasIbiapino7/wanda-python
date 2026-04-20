@@ -594,28 +594,36 @@ sempre gere como saída um JSON no formato abaixo:
         client = openai.OpenAI(api_key=openai_api_key)
         
         if assistantStyle == "VERBOSE":
-            prompt = f"""
+            prompt = f"""\
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
 um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
 jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
-por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
-Abaixo o código de um aluno que apresentou algum tipo de erro.
-        
-O código do aluno:
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longo dos rounds.
+
+---
+
+Código do aluno:
 {code}
 
-Erro do python durante a execução do código:
+Erro do Python durante a execução:
 {erro}
-            
-Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-explique para o aluno o motivo do erro.
 
-Gere a resposta seguindo as seguintes regras:
-Fale em primeira pessoa, como se estivesse conversando amigavelmente com o aluno.
-Use uma linguagem leve e não muito técnica.
-Sempre identifique a linha do erro na explicação (ex: “o problema está na linha 3”).
-Não apresente o código corrigido por completo. Ao invés disso, explique o que houve e como corrigir, 
-dando pistas específicas, mas sem reescrever todo o código.
+---
+
+PENSAMENTO (use o campo "pensamento"):
+Responda internamente antes de escrever qualquer coisa para o aluno:
+1. Qual é o tipo do erro? (ex: TypeError, NameError, IndentationError...)
+2. Em qual linha exatamente o erro acontece?
+3. O que causou esse erro — qual foi a ação ou valor que gerou o problema?
+4. Qual é a pista mais útil que posso dar sem mostrar o código corrigido?
+
+RESPOSTA (use o campo "resposta"):
+- Explique o que aconteceu em linguagem simples, sem jargão técnico excessivo.
+- Identifique a linha onde o erro ocorreu.
+- Explique o motivo do erro de forma concreta — o que o Python encontrou e o que esperava.
+- Dê uma pista específica de como corrigir — sem mostrar o código corrigido, nem parcialmente.
+- Tom: conversa direta, amigável, primeira pessoa.
+- Máximo de 3 parágrafos.
 
 sempre gere como saída um JSON no formato abaixo:
 {{
@@ -623,58 +631,72 @@ sempre gere como saída um JSON no formato abaixo:
     "resposta": String
 }}
 """
+
         elif assistantStyle == "SUCCINCT":
-            prompt = f"""
+            prompt = f"""\
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
 um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
 jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
-por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
-Abaixo o código de um aluno que apresentou algum tipo de erro.
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longo dos rounds.
 
-O código do aluno:
+---
+
+Código do aluno:
 {code}
 
-Erro do python durante a execução do código:
+Erro do Python durante a execução:
 {erro}
 
-Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-explique para o aluno o motivo do erro.
-        
-Gere a resposta seguindo as seguintes regras:
-Seja extremamente direto. Nada de explicações longas.
-Sem introduções ou despedidas.
-Aponte o erro e onde ele ocorre, sempre citando a linha onde ocorreu o erro.
-Dê uma pista para corrigir, mas de forma sucinta.
-Não apresente o código corrigido.
-            
+---
+
+PENSAMENTO (use o campo "pensamento"):
+Responda internamente:
+1. Qual é o tipo do erro e em qual linha acontece?
+2. O que causou o erro?
+3. Qual é a pista mais direta que posso dar?
+
+RESPOSTA (use o campo "resposta"):
+- Máximo 2 frases.
+- Aponte o tipo do erro e a linha onde ocorreu.
+- Dê uma pista direta de como corrigir — sem mostrar código.
+- Zero introdução, zero despedida.
+
 sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
     "resposta": String
 }}
-            """
+"""
+
         else:  # INTERMEDIATE
-            prompt = f"""
+            prompt = f"""\
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
 um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
 jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
-por meio de códigos em python que serão usadas para controlar suas escolhas ao longos dos rounds.
-Abaixo o código de um aluno que apresentou algum tipo de erro.
-            
-O código do aluno:
+por meio de códigos em python que serão usadas para controlar suas escolhas ao longo dos rounds.
+
+---
+
+Código do aluno:
 {code}
-            
-Erro do python durante a execução do código:
+
+Erro do Python durante a execução:
 {erro}
-            
-Usando o código acima e o respectivo erro obtido ao executar esse código, usando a técnica CoT
-explique para o aluno o motivo do erro.
-        
-Gere a resposta seguindo as seguintes regras:
-Utilize snippets de código para mostrar o erro e como corrigir.
-Especifique a linha onde o erro aconteceu.
-O snippet deve conter apenas a correção da linha onde ocorreu o código.
-            
+
+---
+
+PENSAMENTO (use o campo "pensamento"):
+Responda internamente:
+1. Qual é o tipo do erro e em qual linha acontece?
+2. O que causou esse erro — qual foi a ação ou valor que gerou o problema?
+3. Qual é a pista mais útil que posso dar sem mostrar o código corrigido?
+
+RESPOSTA (use o campo "resposta"):
+- Identifique a linha e explique o motivo do erro de forma objetiva.
+- Dê uma pista de como corrigir — sem mostrar o código corrigido, nem parcialmente.
+- Tom: direto, sem excessos, primeira pessoa.
+- Máximo de 2 parágrafos curtos.
+
 sempre gere como saída um JSON no formato abaixo:
 {{
     "pensamento": String,
@@ -683,7 +705,6 @@ sempre gere como saída um JSON no formato abaixo:
 """
         answer = ask_openai(prompt, openai_api_key)
         return answer
-    
 
     def validator_bits(self, code: str, assistantStyle: str, openai_api_key: str) -> dict:
         local_env = {}
