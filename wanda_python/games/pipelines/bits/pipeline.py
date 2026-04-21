@@ -1,6 +1,21 @@
 import ast
 from typing import Optional, Dict, Any
 from ..base_pipeline import BasePipeline
+from .prompts import prompt_semantics
+
+import openai
+import ast
+import json
+from openai import OpenAIError
+from opentelemetry import trace
+import logging
+
+from tests import TESTS_BITS
+
+from ...prompts.shared import prompt_error_execution, prompt_run_results
+
+logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 # from ...validators.signature_validator import SignatureValidator
 # from ...validators.semantics_validator import SemanticsValidator
@@ -13,12 +28,122 @@ def _normalize_style(style: str) -> str:
         return "INTERMEDIATE" if s == "INTERMEDIARY" else s
     return "INTERMEDIATE"
 
+def ask_openai(prompt: str, api_key: str) -> dict:
+    with tracer.start_as_current_span("openai.chat") as span:
+        span.set_attribute("openai.model", "gpt-4o-mini")
+        span.set_attribute("openai.prompt_length", len(prompt))
+
+        client = openai.OpenAI(api_key=api_key)
+
+        system_msg = {
+            "role": "system",
+            "content": (
+                'Responda EXCLUSIVAMENTE com um objeto JSON contendo '
+                'as chaves "pensamento" e "resposta". Nada fora das chaves.'
+            )
+        }
+
+        try:
+            answer = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[system_msg, {"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                max_tokens=300,
+            )
+
+            span.set_attribute("openai.tokens_total", answer.usage.total_tokens)
+            span.set_attribute("openai.tokens_prompt", answer.usage.prompt_tokens)
+            span.set_attribute("openai.tokens_completion", answer.usage.completion_tokens)
+
+            return json.loads(answer.choices[0].message.content)
+
+        except OpenAIError as e:
+            span.record_exception(e)
+            span.set_status(trace.StatusCode.ERROR)
+            logger.error("Erro na chamada OpenAI", exc_info=True)
+            return {"pensamento": "", "resposta": ""}
+
 class BitsPipeline(BasePipeline):
     def __init__(self, spec: GameSpec):
         self.spec = spec
         #self._signature = SignatureValidator()
         #self._semantics = SemanticsValidator()
         #self._execution = ExecutionValidator()
+
+    def _execute_strict(self, code: str, TESTS, assistantStyle: str, api_key: str) -> dict:
+        local_env = {}
+        try:
+            exec(code, {}, local_env)
+        except Exception as err:
+            return prompt_error_execution(code, err, api_key, assistantStyle)
+
+        strategy_fn = local_env.get("strategy")
+        if not strategy_fn:
+            return {
+                "pensamento": "",
+                "resposta": "Função 'strategy' não encontrada no seu código. "
+                            "Verifique o nome da função e tente novamente."
+            }
+
+        test_inputs = TESTS
+
+        for test_case in test_inputs:
+            try:
+                _ = strategy_fn(*test_case)
+            except Exception as err:
+                return prompt_error_execution(code, err, api_key, assistantStyle)
+
+        return ""
+
+    def _execute(self, code, TESTS, api_key, assistantStyle):
+        test_inputs = TESTS
+
+        results = []
+        local_env = {}
+        try:
+            exec(code, {}, local_env)
+        except Exception as err:
+            prompt = prompt_error_execution(code, err, assistantStyle)
+            err_message = ask_openai(prompt, api_key)
+            print(err_message)
+            return []
+
+        strategy_fn = local_env.get("strategy")
+        if not strategy_fn:
+            err_message = ask_openai({"pensamento": "", "resposta": "Função 'strategy' não encontrada"}, api_key)
+            print(err_message)
+            return []
+            
+
+        for test_case in test_inputs:
+            try:
+                output = strategy_fn(*test_case)
+                if output in ("BIT8", "BIT16", "BIT32", "FIREWALL"):
+                    results.append({
+                        "output": output,
+                        "valid": True,
+                        "gameValid": True
+                })
+                else:
+                    results.append({
+                        "output": output,
+                        "valid": True,
+                        "gameValid": False,
+                        "fallback": "NEXT_AVAILABLE_CARD",
+                        "note": (
+                            "Retorno fora do esperado. O jogo ignora esse valor e "
+                            "usa a próxima carta disponível na mão do jogador."
+                        )
+                    })
+            except Exception as err:
+                prompt = prompt_error_execution(code, err, assistantStyle)
+                err_message = ask_openai(prompt, api_key)
+                print(err_message)
+                return []
+            
+        return results
+
+        # return self.feedback_outputs_tests_bits(results, openai_api_key, assistantStyle)
     
     def _parse_ast(self, code: str) -> Optional[ast.AST]:
         try:
@@ -110,6 +235,23 @@ class BitsPipeline(BasePipeline):
             return style_msgs["wrong_signature"]
 
         return ""  # OK
+    
+    def _run_semantics(self, code, style, function_name, api_key):
+        prompt = prompt_semantics(code=code, assistant_style=style, openai_api_key=api_key, spec=self.spec)
+        return ask_openai(prompt, api_key)
+    
+    def _run_tests(self, code, style, function_name, api_key):
+        results = self._execute(code, TESTS_BITS, api_key, style)
+        prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns["strategy"], assistant_style=style)
+
+        return ask_openai(prompt, api_key)
+
+    def _run_strict_tests(self, code, style, function_name, api_key):
+        error_prompt = self._execute_strict(code, TESTS_BITS, style, api_key)
+        if error_prompt:
+            return ask_openai(error_prompt, api_key)
+
+        return {"valid": True, "answer": "aceita", "thought": ""}
     
     # async def feedback(self, code: str, assistant_style: str,function_name: str, openai_api_key: str) -> Dict[str, Any]:
     #     style = _normalize_style(assistant_style)
