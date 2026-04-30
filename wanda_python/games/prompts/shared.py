@@ -1,8 +1,7 @@
 def prompt_error_execution(code: str, erro: Exception, assistantStyle: str) -> str:
         prompts = {
             "VERBOSE": {
-                "prompt": {
-                    f"""
+                "prompt": f"""
     Você é um assistente virtual de programação Python integrado à plataforma Wanda,
     um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
     jogos de cartas dentro da plataforma. O sistema tem como premissa que o aluno crie estratégias
@@ -31,7 +30,6 @@ def prompt_error_execution(code: str, erro: Exception, assistantStyle: str) -> s
         "resposta": String
     }}
     """
-    }
                 },
                 "SUCCINCT": {
                      "prompt": f"""
@@ -64,7 +62,7 @@ sempre gere como saída um JSON no formato abaixo:
 }}
             """
                 },
-                "ITERMEDIATE": {
+                "INTERMEDIATE": {
                      "prompt": f"""
 Você é um assistente virtual de programação Python integrado à plataforma Wanda,
 um sistema voltado para alunos iniciantes que estão aprendendo a programar em python, por meio de
@@ -97,7 +95,7 @@ sempre gere como saída um JSON no formato abaixo:
         prompt = prompts[assistantStyle]["prompt"]
         return prompt
 
-def prompt_run_results(results, game_name, valid_returns, assistantStyle: str) -> dict:
+def prompt_run_results(results, game_name, valid_returns, assistant_style: str) -> dict:
 
         prompts = {
             "VERBOSE": {
@@ -261,4 +259,6 @@ sempre gere como saída um JSON no formato abaixo:
             }
         }
 
-        return prompts[assistantStyle]["prompt"]
+        # print(prompts[assistant_style]["prompt"])
+
+        return prompts[assistant_style]["prompt"]

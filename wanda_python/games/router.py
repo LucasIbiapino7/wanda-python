@@ -1,7 +1,7 @@
 from typing import Protocol, Dict, Any, Tuple
 from .registry import REGISTRY, GameSpec
 from .pipelines.jokenpo import JokenpoPipeline
-from .pipelines.bits import BitsPipeline
+from .pipelines.bits.pipeline import BitsPipeline
 import logging
 
 logger = logging.getLogger(__name__)

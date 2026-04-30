@@ -10,7 +10,7 @@ from openai import OpenAIError
 from opentelemetry import trace
 import logging
 
-from tests import TESTS_BITS
+from .tests import TESTS_BITS
 
 from ...prompts.shared import prompt_error_execution, prompt_run_results
 
@@ -58,6 +58,7 @@ def ask_openai(prompt: str, api_key: str) -> dict:
             return json.loads(answer.choices[0].message.content)
 
         except OpenAIError as e:
+            # print("EXCECAO")
             span.record_exception(e)
             span.set_status(trace.StatusCode.ERROR)
             logger.error("Erro na chamada OpenAI", exc_info=True)
@@ -70,12 +71,12 @@ class BitsPipeline(BasePipeline):
         #self._semantics = SemanticsValidator()
         #self._execution = ExecutionValidator()
 
-    def _execute_strict(self, code: str, TESTS, assistantStyle: str, api_key: str) -> dict:
+    def _execute_strict(self, code: str, TESTS, assistantStyle: str) -> dict:
         local_env = {}
         try:
             exec(code, {}, local_env)
         except Exception as err:
-            return prompt_error_execution(code, err, api_key, assistantStyle)
+            return prompt_error_execution(code, err, assistantStyle)
 
         strategy_fn = local_env.get("strategy")
         if not strategy_fn:
@@ -91,11 +92,11 @@ class BitsPipeline(BasePipeline):
             try:
                 _ = strategy_fn(*test_case)
             except Exception as err:
-                return prompt_error_execution(code, err, api_key, assistantStyle)
+                return prompt_error_execution(code, err, assistantStyle)
 
         return ""
 
-    def _execute(self, code, TESTS, api_key, assistantStyle):
+    def _execute(self, code, TESTS, assistantStyle):
         test_inputs = TESTS
 
         results = []
@@ -103,16 +104,17 @@ class BitsPipeline(BasePipeline):
         try:
             exec(code, {}, local_env)
         except Exception as err:
-            prompt = prompt_error_execution(code, err, assistantStyle)
-            err_message = ask_openai(prompt, api_key)
-            print(err_message)
-            return []
+            # print(f"Erro ao executar código: {err}")
+            error_prompt = prompt_error_execution(code, err, assistantStyle)
+            #err_message = ask_openai(prompt, api_key)
+            #print(err_message)
+            return error_prompt
 
         strategy_fn = local_env.get("strategy")
         if not strategy_fn:
-            err_message = ask_openai({"pensamento": "", "resposta": "Função 'strategy' não encontrada"}, api_key)
-            print(err_message)
-            return []
+            err_prompt = {"pensamento": "", "resposta": "Função 'strategy' não encontrada"} # ask_openai({"pensamento": "", "resposta": "Função 'strategy' não encontrada"}, api_key)
+            # print(err_message)
+            return err_prompt
             
 
         for test_case in test_inputs:
@@ -136,10 +138,10 @@ class BitsPipeline(BasePipeline):
                         )
                     })
             except Exception as err:
-                prompt = prompt_error_execution(code, err, assistantStyle)
-                err_message = ask_openai(prompt, api_key)
-                print(err_message)
-                return []
+                error_prompt = prompt_error_execution(code, err, assistantStyle)
+                # err_message = ask_openai(prompt, api_key)
+                # print(err_message)
+                return error_prompt
             
         return results
 
@@ -155,6 +157,7 @@ class BitsPipeline(BasePipeline):
         style = _normalize_style(style)
         # 1) AST
         tree = self._parse_ast(code)
+        #print(f"AST: {tree}")
         if tree is None:
             return {
                 "valid": False,
@@ -178,6 +181,7 @@ class BitsPipeline(BasePipeline):
          # Lê a assinatura esperada do GameSpec
         expected_args = self.spec.signature.get("strategy", [])
         expected_sig_str = ", ".join(expected_args)
+        # print(f"Expected signature string: {expected_sig_str}")
 
         # Mensagens por estilo
         messages = {
@@ -222,7 +226,10 @@ class BitsPipeline(BasePipeline):
         # Procura a função 'strategy'
         strategy_fn: Optional[ast.FunctionDef] = None
         for node in ast.walk(tree):
+            #if isinstance(node, ast.FunctionDef):
+            #    print(f"AST Node name: {node.name}")
             if isinstance(node, ast.FunctionDef) and node.name == "strategy":
+                # print(f"AST Node name: {node.name}")
                 strategy_fn = node
                 break
         
@@ -237,19 +244,47 @@ class BitsPipeline(BasePipeline):
         return ""  # OK
     
     def _run_semantics(self, code, style, function_name, api_key):
-        prompt = prompt_semantics(code=code, assistant_style=style, openai_api_key=api_key, spec=self.spec)
-        return ask_openai(prompt, api_key)
+        tree = self._parse_ast(code)
+        prompt = prompt_semantics(code=code, tree=tree, assistant_style=style, openai_api_key=api_key, spec=self.spec)
+
+        ret = ask_openai(prompt, api_key)
+        thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
+        answer = str(ret.get("resposta", "")) if isinstance(ret, dict) else ""
+
+        return {"valid": True, "answer": answer, "thought": thought}
     
     def _run_tests(self, code, style, function_name, api_key):
-        results = self._execute(code, TESTS_BITS, api_key, style)
-        prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns["strategy"], assistant_style=style)
+        #print("CHEGOU AQ")
+        results = self._execute(code, TESTS_BITS, style)
+        # print(f"RESULTADOS DOS TESTES: {results}")
 
-        return ask_openai(prompt, api_key)
+        # Se results for uma lista, significa que a execução ocorreu e temos outputs dos testes para analisar.
+        if isinstance(results, list):
+            prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns["strategy"], assistant_style=style)
+            ret = ask_openai(prompt, api_key)
+            valid = True
+        else: # Se results não for uma lista, significa que ocorreu um erro na execução e o resultado é um prompt de erro a ser enviado para o OpenAI.
+            ret = ask_openai(results, api_key)
+            valid = False
+
+        # print(f"RETORNO DO OPENAI APÓS TESTES: {ret}")
+
+        # print(results)
+        thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
+        answer = str(ret.get("resposta", "")) if isinstance(ret, dict) else ""
+        # print(answer)
+        return {"valid": valid, "answer": answer, "thought": thought}
 
     def _run_strict_tests(self, code, style, function_name, api_key):
-        error_prompt = self._execute_strict(code, TESTS_BITS, style, api_key)
+        error_prompt = self._execute_strict(code, TESTS_BITS, style)
+        # print(f"RESULTADO DOS TESTES STRICT: {error_prompt}")
         if error_prompt:
-            return ask_openai(error_prompt, api_key)
+            ret = ask_openai(error_prompt, api_key)
+
+            thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
+            answer = str(ret.get("resposta", "")) if isinstance(ret, dict) else ""
+
+            return {"valid": False, "answer": answer, "thought": thought}
 
         return {"valid": True, "answer": "aceita", "thought": ""}
     

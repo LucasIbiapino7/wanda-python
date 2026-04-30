@@ -1,34 +1,24 @@
-from dataclasses import dataclass
+from .gamespec import GameSpec
 from typing import Dict, List
-from .pipelines.bits import BitsPipeline
-from .pipelines.bits import JokenpoPipeline
-
-@dataclass(frozen=True)
-class GameSpec:
-    name: str
-    rulesVersion: str
-    functions: List[str]
-    signature: Dict[str, List[str]]
-    valid_returns: Dict[str, List[str]]
-    prompts_key: str
-    pipeline_class: type
+from .pipelines.bits.pipeline import BitsPipeline
+# from .pipelines.bits import JokenpoPipeline
 
 REGISTRY: Dict[str, GameSpec] = {
-    "JOKENPO": GameSpec(
-        name="JOKENPO",
-        rulesVersion="20/10/2025",
-        functions=["jokenpo1", "jokenpo2"],
-        signature={
-            "jokenpo1": ["colocar aqui a assinatura"],
-            "jokenpo2": ["colocar aqui a assinatura"]
-        },
-        valid_returns={
-            "jokenpo1": ["colocar aqui os retornos"],
-            "jokenpo2": ["colocar aqui os retornos"]
-        },
-        prompts_key="jokenpo",
-        pipeline_class=JokenpoPipeline()
-    ),
+    # "JOKENPO": GameSpec(
+    #     name="JOKENPO",
+    #     rulesVersion="20/10/2025",
+    #     functions=["jokenpo1", "jokenpo2"],
+    #     signature={
+    #         "jokenpo1": ["colocar aqui a assinatura"],
+    #         "jokenpo2": ["colocar aqui a assinatura"]
+    #     },
+    #     valid_returns={
+    #         "jokenpo1": ["colocar aqui os retornos"],
+    #         "jokenpo2": ["colocar aqui os retornos"]
+    #     },
+    #     prompts_key="jokenpo",
+    #     pipeline_class=JokenpoPipeline()
+    # ),
     "BITS": GameSpec(
         name="BITS",
         functions=["bits"],
@@ -40,6 +30,6 @@ REGISTRY: Dict[str, GameSpec] = {
             "strategy": ["BIT8", "BIT16", "BIT32", "FIREWALL"]
         },
         prompts_key="bits",
-        pipeline_class=BitsPipeline()
+        pipeline_class=BitsPipeline
     )
 }
