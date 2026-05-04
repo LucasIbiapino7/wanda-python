@@ -1,24 +1,24 @@
 from .gamespec import GameSpec
 from typing import Dict, List
 from .pipelines.bits.pipeline import BitsPipeline
-# from .pipelines.bits import JokenpoPipeline
+from .pipelines.jokenpo.pipeline import JokenpoPipeline
 
 REGISTRY: Dict[str, GameSpec] = {
-    # "JOKENPO": GameSpec(
-    #     name="JOKENPO",
-    #     rulesVersion="20/10/2025",
-    #     functions=["jokenpo1", "jokenpo2"],
-    #     signature={
-    #         "jokenpo1": ["colocar aqui a assinatura"],
-    #         "jokenpo2": ["colocar aqui a assinatura"]
-    #     },
-    #     valid_returns={
-    #         "jokenpo1": ["colocar aqui os retornos"],
-    #         "jokenpo2": ["colocar aqui os retornos"]
-    #     },
-    #     prompts_key="jokenpo",
-    #     pipeline_class=JokenpoPipeline()
-    # ),
+    "JOKENPO": GameSpec(
+        name="JOKENPO",
+        rulesVersion="20/10/2025",
+        functions=["jokenpo1", "jokenpo2"],
+        signature={
+            "jokenpo1": ["colocar aqui a assinatura"],
+            "jokenpo2": ["colocar aqui a assinatura"]
+        },
+        valid_returns={
+            "jokenpo1": ["colocar aqui os retornos"],
+            "jokenpo2": ["colocar aqui os retornos"]
+        },
+        prompts_key="jokenpo",
+        pipeline_class=JokenpoPipeline()
+    ),
     "BITS": GameSpec(
         name="BITS",
         functions=["bits"],
