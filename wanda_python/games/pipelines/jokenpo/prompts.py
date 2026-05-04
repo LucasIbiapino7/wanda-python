@@ -29,8 +29,8 @@ def _extract_used_params(tree: ast.AST, expected: Iterable[str]) -> Set[str]:
 
 def prompt_semantics(code: str,tree: ast.AST,assistant_style: str, function_name: str,spec: GameSpec) -> str:
     # Assinatura esperada e retornos válidos vindos do spec
-    expected_args = spec.signature.get("strategy", [])
-    valid_returns = spec.valid_returns.get("strategy", [])
+    expected_args = spec.signature.get(function_name, {}).get("strategy", [])
+    valid_returns = spec.valid_returns.get(function_name, [])
 
     used_params = _extract_used_params(tree, expected_args)
 
@@ -331,5 +331,6 @@ sempre gere como saída um JSON no formato abaixo:
             }
         }  
     }
+    # print(f"PROMPT: {prompts[function_name][assistant_style]["prompt"]}")
 
     return prompts[function_name][assistant_style]["prompt"]

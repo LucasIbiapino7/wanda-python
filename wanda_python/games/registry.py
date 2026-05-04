@@ -9,15 +9,19 @@ REGISTRY: Dict[str, GameSpec] = {
         rulesVersion="20/10/2025",
         functions=["jokenpo1", "jokenpo2"],
         signature={
-            "jokenpo1": ["colocar aqui a assinatura"],
-            "jokenpo2": ["colocar aqui a assinatura"]
+            "jokenpo1": {
+                "strategy": ["card1", "card2", "card3"]
+            },
+            "jokenpo2": {
+                "strategy": ["card1", "card2", "opponentCard1", "opponentCard2"]
+            }
         },
         valid_returns={
-            "jokenpo1": ["colocar aqui os retornos"],
-            "jokenpo2": ["colocar aqui os retornos"]
+            "jokenpo1": ["pedra", "papel", "tesoura"],
+            "jokenpo2": ["pedra", "papel", "tesoura"]
         },
         prompts_key="jokenpo",
-        pipeline_class=JokenpoPipeline()
+        pipeline_class=JokenpoPipeline
     ),
     "BITS": GameSpec(
         name="BITS",

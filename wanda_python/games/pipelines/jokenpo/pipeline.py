@@ -179,9 +179,12 @@ class JokenpoPipeline(BasePipeline):
         # if style == "INTERMEDIARY":
         #     style = "INTERMEDIATE"
 
-         # Lê a assinatura esperada do GameSpec
-        expected_args = self.spec.signature.get("strategy", [])
+        # Lê a assinatura esperada do GameSpec
+        # print(f"FUNCTION NAME: {function_name}")
+        # print(f"ESPEC: {self.spec.signature}")
+        expected_args = self.spec.signature.get(function_name, {}).get("strategy", [])
         expected_sig_str = ", ".join(expected_args)
+        # print(f"Expected args: {self.spec.signature.get(function_name, {})}")
         # print(f"Expected signature string: {expected_sig_str}")
 
         # Define mensagens distintas para cada tipo de função
@@ -314,7 +317,7 @@ class JokenpoPipeline(BasePipeline):
 
         # Se results for uma lista, significa que a execução ocorreu e temos outputs dos testes para analisar.
         if isinstance(results, list):
-            prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns["strategy"], assistant_style=style)
+            prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns[function_name], assistant_style=style)
             ret = ask_openai(prompt, api_key)
             valid = True
         else: # Se results não for uma lista, significa que ocorreu um erro na execução e o resultado é um prompt de erro a ser enviado para o OpenAI.
