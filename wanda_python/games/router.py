@@ -1,7 +1,7 @@
 from typing import Protocol, Dict, Any, Tuple
 from .registry import REGISTRY, GameSpec
-from .pipelines.jokenpo import JokenpoPipeline
-from .pipelines.bits import BitsPipeline
+from .pipelines.jokenpo.pipeline import JokenpoPipeline
+from .pipelines.bits.pipeline import BitsPipeline
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,10 +48,7 @@ def resolve_pipeline(game_name: str, function_name: str) -> Tuple[GameSpec, Game
         raise ValueError(f"Função '{function_name}' não é válida para {game_name}")
 
     # Fábricas para cada jogo
-    if game_name == "JOKENPO":
-        return spec, JokenpoPipeline(spec)
-    elif game_name == "BITS":
-        return spec, BitsPipeline(spec)
+    return spec, spec.pipeline_class(spec)
 
-    logger.error('Pipeline nao encontrado. game=%s', game_name)
-    raise ValueError(f"Pipeline não encontrado para {game_name}")
+    # logger.error('Pipeline nao encontrado. game=%s', game_name)
+    # raise ValueError(f"Pipeline não encontrado para {game_name}")
