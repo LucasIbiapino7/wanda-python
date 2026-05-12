@@ -1,0 +1,365 @@
+13c13
+< from .tests import TESTS_BITS
+---
+> from .tests import TESTS_JOKENPO1, TESTS_JOKENPO2
+67c67,74
+< class BitsPipeline(BasePipeline):
+---
+> 
+> class JokenpoPipeline(BasePipeline):
+>     """
+>     Pipeline única do Jokenpo contendo:
+>       - feedback(...): assinatura -> semântica (seu fluxo atual)
+>       - run(...):      assinatura -> execução de testes
+>     """
+> 
+123c130
+<                 if output in ("BIT8", "BIT16", "BIT32", "FIREWALL"):
+---
+>                 if output in ("pedra", "papel", "tesoura"):
+149c156
+<     
+---
+> 
+153a161
+>             # Teoricamente nao cai aqui, apenas prevenção 
+168,174d175
+<         """
+<         Validação de assinatura para o jogo BITS.
+<         Usa a assinatura do GameSpec (spec.signature["strategy"]) e exige a função 'strategy'
+<         com os parâmetros exatamente na ordem indicada.
+<         Retorna string vazia se estiver OK; caso contrário, retorna a mensagem de erro
+<         de acordo com o estilo escolhido.
+<         """
+181,182c182,185
+<          # Lê a assinatura esperada do GameSpec
+<         expected_args = self.spec.signature.get("strategy", [])
+---
+>         # Lê a assinatura esperada do GameSpec
+>         # print(f"FUNCTION NAME: {function_name}")
+>         # print(f"ESPEC: {self.spec.signature}")
+>         expected_args = self.spec.signature.get(function_name, {}).get("strategy", [])
+183a187
+>         # print(f"Expected args: {self.spec.signature.get(function_name, {})}")
+186c190
+<         # Mensagens por estilo
+---
+>         # Define mensagens distintas para cada tipo de função
+188,221c192,228
+<             "VERBOSE": {
+<                 "missing_function": (
+<                     "Ei! Não encontrei a função 'strategy' no seu código.\n"
+<                     f"Para o jogo BITS, ela deve existir assim:\n\n"
+<                     f"def strategy({expected_sig_str}):\n"
+<                     "    # seu código aqui\n\n"
+<                     "Verifique se o nome está correto e se a indentação não quebrou a definição."
+<                 ),
+<                 "wrong_signature": (
+<                     "Quase lá! Achei a função 'strategy', mas a assinatura não confere.\n"
+<                     f"Para o BITS, a ordem correta dos parâmetros é:\n"
+<                     f"({expected_sig_str}).\n"
+<                     "Ajuste a ordem/nome dos parâmetros para seguir exatamente essa lista."
+<                 ),
+<             },
+<             "SUCCINCT": {
+<                 "missing_function": (
+<                     "Função 'strategy' ausente. Use:\n"
+<                     f"def strategy({expected_sig_str}):"
+<                 ),
+<                 "wrong_signature": (
+<                     "Assinatura incorreta. Esperado:\n"
+<                     f"({expected_sig_str})."
+<                 ),
+<             },
+<             "INTERMEDIATE": {
+<                 "missing_function": (
+<                     "Não encontrei a função 'strategy'. Para o BITS, declare assim:\n"
+<                     f"def strategy({expected_sig_str}):"
+<                 ),
+<                 "wrong_signature": (
+<                     "A função 'strategy' existe, mas a assinatura esperada para o BITS é:\n"
+<                     f"({expected_sig_str})."
+<                 ),
+---
+>             "jokenpo1": {
+>                 "VERBOSE": {
+>                     "missing_function": (
+>                         "Olá! Sabe, estou olhando seu código e não consegui achar a função 'strategy'.\n"
+>                         "Ela precisa estar assim:\n"
+>                         "def strategy(card1, card2, card3):\n"
+>                         "    # Seu código\n"
+>                         "Verifique se o nome está correto e se não houve problemas de indentação! Estou aqui pra ajudar."
+>                     ),
+>                     "wrong_signature": (
+>                         "Ei! Parece que a sua função 'strategy' não tem os parâmetros na ordem esperada.\n"
+>                         "Devem ser: card1, card2, card3.\n"
+>                         "Dê uma olhada e certifique-se de que eles estejam no lugar certinho, tá bom?"
+>                     )
+>                 },
+>                 "SUCCINCT": {
+>                     "missing_function": (
+>                         "Função 'strategy' não encontrada. Ela deve ser:\n"
+>                         "def strategy(card1, card2, card3):"
+>                     ),
+>                     "wrong_signature": (
+>                         "A função 'strategy' existe, mas os parâmetros não batem.\n"
+>                         "Use: card1, card2, card3."
+>                     )
+>                 },
+>                 "INTERMEDIATE": {
+>                     "missing_function": (
+>                         "Não achei a função 'strategy' no seu código. Ela precisa estar declarada como:\n"
+>                         "def strategy(card1, card2, card3):\n"
+>                         "Verifique o nome e a indentação para garantir que esteja certo, ok?"
+>                     ),
+>                     "wrong_signature": (
+>                         "A função 'strategy' foi encontrada, mas os parâmetros não estão corretos.\n"
+>                         "Eles devem ser: card1, card2, card3.\n"
+>                         "Dê uma revisada pra garantir que estejam nessa ordem."
+>                     )
+>                 }
+222a230,267
+>             "jokenpo2": {
+>                 "VERBOSE": {
+>                     "missing_function": (
+>                         "Olá! Sabe, estou olhando seu código e não consegui achar a função 'strategy'.\n"
+>                         "Ela precisa estar assim:\n"
+>                         "def strategy(card1, card2, opponentCard1, opponentCard2):\n"
+>                         "    # Seu código\n"
+>                         "Verifique se o nome está correto e se não houve problemas de indentação! Estou aqui pra ajudar."
+>                     ),
+>                     "wrong_signature": (
+>                         "Ei! Parece que a sua função 'strategy' não tem os parâmetros na ordem esperada.\n"
+>                         "Devem ser: card1, card2, opponentCard1, opponentCard2.\n"
+>                         "Dê uma olhada e certifique-se de que eles estejam no lugar certinho, tá bom?"
+>                     )
+>                 },
+>                 "SUCCINCT": {
+>                     "missing_function": (
+>                         "Função 'strategy' não encontrada. Ela deve ser:\n"
+>                         "def strategy(card1, card2, opponentCard1, opponentCard2):"
+>                     ),
+>                     "wrong_signature": (
+>                         "A função 'strategy' existe, mas os parâmetros não batem.\n"
+>                         "Use: card1, card2, opponentCard1, opponentCard2."
+>                     )
+>                 },
+>                 "INTERMEDIATE": {
+>                     "missing_function": (
+>                         "Não achei a função 'strategy' no seu código. Ela precisa estar declarada como:\n"
+>                         "def strategy(card1, card2, opponentCard1, opponentCard2):\n"
+>                         "Verifique o nome e a indentação para garantir que esteja certo, ok?"
+>                     ),
+>                     "wrong_signature": (
+>                         "A função 'strategy' foi encontrada, mas os parâmetros não estão corretos.\n"
+>                         "Eles devem ser: card1, card2, opponentCard1, opponentCard2.\n"
+>                         "Dê uma revisada pra garantir que estejam nessa ordem."
+>                     )
+>                 }
+>             }
+224d268
+<         style_msgs = messages[style]
+226,227c270,274
+<         # Procura a função 'strategy'
+<         strategy_fn: Optional[ast.FunctionDef] = None
+---
+>         # Seleciona o conjunto de mensagens baseado no tipo da função (jokenpo1 ou jokenpo2)
+>         style_dict = messages.get(function_name, messages["jokenpo1"]).get(style, messages["jokenpo1"]["SUCCINCT"])
+> 
+>         # Verifica a presença da função 'strategy'
+>         strategy_function = None
+229,230d275
+<             #if isinstance(node, ast.FunctionDef):
+<             #    print(f"AST Node name: {node.name}")
+232,233c277
+<                 # print(f"AST Node name: {node.name}")
+<                 strategy_fn = node
+---
+>                 strategy_function = node
+235,240c279,292
+<         
+<         if not strategy_fn:
+<             return style_msgs["missing_function"]
+<         
+<         # Compara parâmetros
+<         actual_args = [arg.arg for arg in strategy_fn.args.args]
+---
+> 
+>         if not strategy_function:
+>             return style_dict["missing_function"]
+> 
+>         # Define a lista de parâmetros esperados com base no tipo de função
+>         if function_name == "jokenpo1":
+>             expected_args = ["card1", "card2", "card3"]
+>         elif function_name == "jokenpo2":
+>             expected_args = ["card1", "card2", "opponentCard1", "opponentCard2"]
+>         else:
+>             # Valor padrão, se não for reconhecido, pode-se assumir o jokenpo1
+>             expected_args = ["card1", "card2", "card3"]
+> 
+>         actual_args = [arg.arg for arg in strategy_function.args.args]
+242c294
+<             return style_msgs["wrong_signature"]
+---
+>             return style_dict["wrong_signature"]
+244c296
+<         return ""  # OK
+---
+>         return ""  # Sem erros
+248c300
+<         prompt = prompt_semantics(code=code, tree=tree, assistant_style=style, openai_api_key=api_key, spec=self.spec)
+---
+>         prompt = prompt_semantics(code=code, tree=tree, assistant_style=style, function_name=function_name, spec=self.spec)
+258c310,315
+<         results = self._execute(code, TESTS_BITS, style)
+---
+>         if function_name == "jokenpo1":
+>             TESTS = TESTS_JOKENPO1
+>         elif function_name == "jokenpo2":
+>             TESTS = TESTS_JOKENPO2
+> 
+>         results = self._execute(code, TESTS, style)
+263c320
+<             prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns["strategy"], assistant_style=style)
+---
+>             prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns[function_name], assistant_style=style)
+279,280c336,342
+<         error_prompt = self._execute_strict(code, TESTS_BITS, style)
+<         # print(f"RESULTADO DOS TESTES STRICT: {error_prompt}")
+---
+>         if function_name == "jokenpo1":
+>             TESTS = TESTS_JOKENPO1
+>         elif function_name == "jokenpo2":
+>             TESTS = TESTS_JOKENPO2
+> 
+>         error_prompt = self._execute_strict(code, TESTS, style)
+>         
+290,291c352,360
+<     
+<     # async def feedback(self, code: str, assistant_style: str,function_name: str, openai_api_key: str) -> Dict[str, Any]:
+---
+> 
+>     # async def feedback(
+>     #     self,
+>     #     code: str,
+>     #     assistant_style: str,
+>     #     function_name: str,#"jokenpo1" |"jokenpo2"
+>     #     openai_api_key: str
+>     # ) -> Dict[str, Any]:
+> 
+293c362,363
+<     #     # 1) AST
+---
+> 
+>     #     # 1) AST (assinatura e semântica precisam percorrer a árvore)
+298c368
+<     #             "answer": "Erro de sintaxe: verifique indentação e vírgulas.",
+---
+>     #             "answer": "Não consegui analisar a sua função por erro de sintaxe. Corrija a sintaxe e tente novamente.",
+301,303c371,378
+<         
+<     #     # Assinatura
+<     #     sig_msg = self._signature.validate_bits_signature(tree=tree,assistant_style=style,spec=self.spec)
+---
+> 
+>     #     # 2) Assinatura
+>     #     sig_msg = self._signature.validate_signature_and_parameters(
+>     #         tree=tree,
+>     #         assistant_style=style,
+>     #         function_type=function_name
+>     #     )
+> 
+310c385,386
+<     #     sem_dict = self._semantics.validate_semantics_bits(
+---
+> 
+>     #     sem_dict = self._semantics.validator(
+315c391
+<     #         spec=self.spec
+---
+>     #         functionType=function_name
+327,331d402
+<     # def _parse_ast(self, code: str) -> Optional[ast.AST]:
+<     #     try:
+<     #         return ast.parse(code)
+<     #     except SyntaxError:
+<     #         return None
+333c404,406
+<     # async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+---
+>     # #RUN 
+>     # async def run(self,code: str,assistant_style: str,function_name: str, openai_api_key: str) -> Dict[str, Any]:
+> 
+335c408,409
+<         
+---
+> 
+>     #     # 1) AST para assinatura
+340c414
+<     #             "answer": "Não consegui analisar a sua função por erro de sintaxe.",
+---
+>     #             "answer": "Não consegui analisar a sua função por erro de sintaxe. Corrija a sintaxe e tente novamente.",
+344,345c418,419
+<     #     # Assinatura
+<     #     sig_msg = self._signature.validate_bits_signature(tree=tree,assistant_style=style,spec=self.spec)
+---
+>     #     # 2) Assinatura
+>     #     sig_msg = self._signature.validate_signature_and_parameters(tree=tree,assistant_style=style,function_type=function_name)
+347c421
+<     #         return {"valid": False, "answer": sig_msg, "thought": ""}
+---
+>     #         return { "valid": False, "answer": sig_msg, "thought": "" }
+349,350c423
+<     #     # testes do jogo
+<     #     tests = self._execution.feedback_tests_bits(code=code, assistantStyle=style, openai_api_key=openai_api_key)
+---
+>     #     tests = self._execution.feedback_tests(code=code,assistantStyle=style, function_type=function_name,openai_api_key=openai_api_key )
+355,358c428
+<     #     return {"valid": True, "answer": answer, "thought": thought}
+<     
+<     # async def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+<     #     style = _normalize_style(assistant_style)
+---
+>     #     return { "valid": True, "answer": answer, "thought": thought }
+359a430,431
+>     # async def validate(self,code: str,assistant_style: str,function_name: str,openai_api_key: str) -> Dict[str, Any]:
+>     #     style = _normalize_style(assistant_style)
+369,370c441,443
+<     #     # 2) Assinatura específica do BITS
+<     #     sig_msg = self._signature.validate_bits_signature(tree=tree, assistant_style=style, spec=self.spec)
+---
+>     #     # 2) Assinatura 
+>     #     sig_msg = self._signature.validate_signature_and_parameters(tree=tree, assistant_style=style,function_type=function_name
+>     #     )
+372,376c445
+<     #         return {
+<     #             "valid": False,
+<     #             "answer": sig_msg,
+<     #             "thought": ""
+<     #         }
+---
+>     #         return {"valid": False, "answer": sig_msg, "thought": ""}
+378,379c447,448
+<     #     # 3) Execução de testes 
+<     #     exec_result = self._execution.validator_bits(code=code, assistantStyle=style, openai_api_key=openai_api_key)
+---
+>     #     # 3) Execução de testes
+>     #     exec_result = self._execution.validator(code=code,assistantStyle=style,function_type=function_name,openai_api_key=openai_api_key)
+381,384c450
+<     #     # Se retornou dicionário = erro 
+<     #     if isinstance(exec_result, dict) and (
+<     #         "pensamento" in exec_result or "resposta" in exec_result
+<     #     ):
+---
+>     #     if isinstance(exec_result, dict) and ("pensamento" in exec_result or "resposta" in exec_result):
+391,397c457
+<     #     # 4) Se passou em tudo = aceito
+<     #     return {
+<     #         "valid": True,
+<     #         "answer": "aceita",
+<     #         "thought": ""
+<     #     }
+<     
+---
+>     #     return {"valid": True, "answer": "aceita", "thought": ""}
+\ Nenhum caractere de nova linha no final do arquivo

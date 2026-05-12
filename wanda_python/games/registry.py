@@ -28,10 +28,12 @@ REGISTRY: Dict[str, GameSpec] = {
         functions=["bits"],
         rulesVersion="27/10/2025",
         signature={
-            "strategy": ["bit8", "bit16", "bit32", "firewall", "opp_last"]
+            "bits": {
+                "strategy": ["bit8", "bit16", "bit32", "firewall", "opp_last"]
+            }
         },
         valid_returns={
-            "strategy": ["BIT8", "BIT16", "BIT32", "FIREWALL"]
+            "bits": ["BIT8", "BIT16", "BIT32", "FIREWALL"]
         },
         prompts_key="bits",
         pipeline_class=BitsPipeline

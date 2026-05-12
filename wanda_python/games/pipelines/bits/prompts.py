@@ -27,7 +27,7 @@ def _extract_used_params(tree: ast.AST, expected: Iterable[str]) -> Set[str]:
 # Colocar em pasta/arquivo prompts/shared.py
 
 
-def prompt_semantics(code: str,tree: ast.AST,assistant_style: str, openai_api_key: str,spec: GameSpec) -> str:
+def prompt_semantics(code: str,tree: ast.AST,assistant_style: str, function_name: str,spec: GameSpec) -> str:
     """
     Validação semântica para o jogo BITS.
     - Pega a assinatura e retornos válidos do GameSpec.
@@ -35,8 +35,8 @@ def prompt_semantics(code: str,tree: ast.AST,assistant_style: str, openai_api_ke
     - Monta um prompt (placeholders prontos para você ajustar depois).
     """
     # Assinatura esperada e retornos válidos vindos do spec
-    expected_args = spec.signature.get("strategy", [])
-    valid_returns = spec.valid_returns.get("strategy", [])
+    expected_args = spec.signature.get(function_name, {}).get("strategy", [])
+    valid_returns = spec.valid_returns.get(function_name, [])
 
     used_params = _extract_used_params(tree, expected_args)
 

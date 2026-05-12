@@ -179,7 +179,7 @@ class BitsPipeline(BasePipeline):
         #     style = "INTERMEDIATE"
 
          # Lê a assinatura esperada do GameSpec
-        expected_args = self.spec.signature.get("strategy", [])
+        expected_args = self.spec.signature.get(function_name, {}).get("strategy", [])
         expected_sig_str = ", ".join(expected_args)
         # print(f"Expected signature string: {expected_sig_str}")
 
@@ -245,7 +245,7 @@ class BitsPipeline(BasePipeline):
     
     def _run_semantics(self, code, style, function_name, api_key):
         tree = self._parse_ast(code)
-        prompt = prompt_semantics(code=code, tree=tree, assistant_style=style, openai_api_key=api_key, spec=self.spec)
+        prompt = prompt_semantics(code=code, tree=tree, assistant_style=style, function_name=function_name, spec=self.spec)
 
         ret = ask_openai(prompt, api_key)
         thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
@@ -260,7 +260,7 @@ class BitsPipeline(BasePipeline):
 
         # Se results for uma lista, significa que a execução ocorreu e temos outputs dos testes para analisar.
         if isinstance(results, list):
-            prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns["strategy"], assistant_style=style)
+            prompt = prompt_run_results(results, self.spec.name, self.spec.valid_returns[function_name], assistant_style=style)
             ret = ask_openai(prompt, api_key)
             valid = True
         else: # Se results não for uma lista, significa que ocorreu um erro na execução e o resultado é um prompt de erro a ser enviado para o OpenAI.
