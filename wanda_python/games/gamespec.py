@@ -10,3 +10,4 @@ class GameSpec:
     valid_returns: Dict[str, List[str]]
     prompts_key: str
     pipeline_class: type
+    prompts: Dict[str, Dict[str, str]]

@@ -1,11 +1,83 @@
 import ast
-from typing import Optional
-from prompts.shared import prompt_error_execution, prompt_run_results
+from typing import Optional, Dict, Any, Iterable, Set
+from ..prompts.shared import prompt_error_execution, prompt_run_results
 from ..registry import GameSpec
 
+import openai
+import ast
+import json
+from openai import OpenAIError
+from opentelemetry import trace
+import logging
+
+logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
+
+def prompt_semantics(code: str,tree: ast.AST,assistant_style: str, function_name: str, spec: GameSpec) -> str:
+    """
+    Validação semântica para o jogo BITS.
+    - Pega a assinatura e retornos válidos do GameSpec.
+    - Analisa quais parâmetros da assinatura foram realmente utilizados.
+    - Monta um prompt (placeholders prontos para você ajustar depois).
+    """
+    # Assinatura esperada e retornos válidos vindos do spec
+    expected_args = spec.get("signature", {}).get(function_name, {}).get("strategy", [])
+
+    used_params = _extract_used_params(tree, expected_args)
+
+    prompt_text = spec.get("prompts", {}).get(function_name, {}).get(assistant_style.lower(), "")
+
+    formatted_prompt = prompt_text.format(code=code, used_params=used_params)
+
+    return formatted_prompt # prompts[assistant_style]["prompt"]
+
+def _normalize_style(style: str) -> str:
+    s = (style or "").strip().upper()
+    if s in ("VERBOSE", "SUCCINCT", "INTERMEDIATE", "INTERMEDIARY"):
+        return "INTERMEDIATE" if s == "INTERMEDIARY" else s
+    return "INTERMEDIATE"
+
+def ask_openai(prompt: str, api_key: str) -> dict:
+    with tracer.start_as_current_span("openai.chat") as span:
+        span.set_attribute("openai.model", "gpt-4o-mini")
+        span.set_attribute("openai.prompt_length", len(prompt))
+
+        client = openai.OpenAI(api_key=api_key)
+
+        system_msg = {
+            "role": "system",
+            "content": (
+                'Responda EXCLUSIVAMENTE com um objeto JSON contendo '
+                'as chaves "pensamento" e "resposta". Nada fora das chaves.'
+            )
+        }
+
+        try:
+            answer = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[system_msg, {"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                max_tokens=300,
+            )
+
+            span.set_attribute("openai.tokens_total", answer.usage.total_tokens)
+            span.set_attribute("openai.tokens_prompt", answer.usage.prompt_tokens)
+            span.set_attribute("openai.tokens_completion", answer.usage.completion_tokens)
+
+            return json.loads(answer.choices[0].message.content)
+
+        except OpenAIError as e:
+            # print("EXCECAO")
+            span.record_exception(e)
+            span.set_status(trace.StatusCode.ERROR)
+            logger.error("Erro na chamada OpenAI", exc_info=True)
+            return {"pensamento": "", "resposta": ""}
+
+# Nova função para selecionar mensagens de erro de assinatura com base no jogo e estilo do assistente.
+# Colocar essas msgs no arquivo do próprio jogo!!!!!!!!!!
 def select_signature_error_message(expected_sig_str: str, function_name: str) -> str:
     signature_error_messages = {
-         "bits":
+        "bits":
         {
             "VERBOSE": {
                 "missing_function": (
@@ -126,7 +198,7 @@ def select_signature_error_message(expected_sig_str: str, function_name: str) ->
     game_msgs = signature_error_messages.get(function_name, {})
     return game_msgs
 
-def _execute_strict(self, code: str, TESTS, assistantStyle: str) -> dict:
+def _execute_strict(code: str, TESTS, assistantStyle: str) -> dict:
         local_env = {}
         try:
             exec(code, {}, local_env)
@@ -152,7 +224,7 @@ def _execute_strict(self, code: str, TESTS, assistantStyle: str) -> dict:
         return ""
 
 # Novo parâmetro "outputs" --> ("pedra", "papel", "tesoura") se JOKENPO; ("BIT8", "BIT16", "BIT32", "FIREWALL") se BITS
-def _execute(self, code, TESTS, assistantStyle, outputs):
+def _execute(code, TESTS, assistantStyle, outputs):
         test_inputs = TESTS
 
         results = []
@@ -201,17 +273,17 @@ def _execute(self, code, TESTS, assistantStyle, outputs):
             
         return results
 
-def _parse_ast(self, code: str) -> Optional[ast.AST]:
+def _parse_ast(code: str) -> Optional[ast.AST]:
         try:
             return ast.parse(code)
         except SyntaxError:
             return None
         
-# Novo parâmetro selected_game_spec para acessar a spec correta de cada jogo
-def _validate_signature(self, code, style, function_name, selected_game_spec: GameSpec) -> str:
+# Novo parâmetro "selected_game_spec" para acessar a spec correta de cada jogo
+def _validate_signature(code, style, function_name, selected_game_spec: Dict[str, Any]) -> str:
         style = _normalize_style(style)
         # 1) AST
-        tree = self._parse_ast(code)
+        tree = _parse_ast(code)
         #print(f"AST: {tree}")
         if tree is None:
             return {
@@ -221,7 +293,7 @@ def _validate_signature(self, code, style, function_name, selected_game_spec: Ga
             }
 
         # Lê a assinatura esperada do GameSpec
-        expected_args = selected_game_spec.signature.get(function_name, {}).get("strategy", [])
+        expected_args = selected_game_spec.get("signature", {}).get(function_name, {}).get("strategy", [])
         expected_sig_str = ", ".join(expected_args)
         # print(f"Expected signature string: {expected_sig_str}")
 
@@ -249,12 +321,74 @@ def _validate_signature(self, code, style, function_name, selected_game_spec: Ga
 
         return ""  # OK
 
-def _run_semantics(self, code, style, function_name, api_key):
-        tree = self._parse_ast(code)
-        prompt = prompt_semantics(code=code, tree=tree, assistant_style=style, function_name=function_name, spec=self.spec)
+def _extract_used_params(tree: ast.AST, expected: Iterable[str]) -> Set[str]:
+    """
+    Extrai o conjunto de parâmetros (por nome) realmente usados dentro da função strategy.
+    """
+    expected_set = set(expected)
+    used = set()
 
+    strategy_function = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "strategy":
+            strategy_function = node
+            break
+
+    if not strategy_function:
+        return used
+
+    for node in ast.walk(strategy_function):
+        if isinstance(node, ast.Name) and node.id in expected_set and isinstance(node.ctx, ast.Load):
+            used.add(node.id)
+
+    return used
+
+# Novo parâmetro "selected_game_spec" para acessar a spec correta de cada jogo
+def _run_semantics(code, style, function_name, api_key, selected_game_spec: Dict[str, Any]):
+        tree = _parse_ast(code)
+        prompt = ""
+
+        prompt = prompt_semantics(code=code, tree=tree, assistant_style=style, function_name=function_name, spec=selected_game_spec)
+
+        # if(selected_game_spec.get("name") == "BITS"):
+        # elif(selected_game_spec.get("name") == "JOKENPO"):
+        #     prompt = prompt_semantics_jokenpo(code=code, tree=tree, assistant_style=style, function_name=function_name, spec=selected_game_spec)
+
+        # print(f"Prompt de semântica:\n{prompt}")
         ret = ask_openai(prompt, api_key)
+        # print(f"Resposta do OpenAI: {ret}")
         thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
         answer = str(ret.get("resposta", "")) if isinstance(ret, dict) else ""
 
         return {"valid": True, "answer": answer, "thought": thought}
+
+# Novo parâmetro "selected_game_spec" para acessar a spec correta de cada jogo
+def _run_tests(code, style, function_name, api_key, selected_game_spec: Dict[str, Any]):
+        results = _execute(code, selected_game_spec.get("tests", []).get(function_name, []), style, selected_game_spec.get("valid_returns", {}).get(function_name, [])) # <-- "TESTS" deve ser passado como parâmetro para a função _run_tests, vindo do jogo específico. Assim, cada jogo pode ter seus próprios testes definidos na spec e passá-los para essa função genérica de execução.
+
+        # Se results for uma lista, significa que a execução ocorreu e temos outputs dos testes para analisar.
+        if isinstance(results, list):
+            prompt = prompt_run_results(results, selected_game_spec.get("name"), selected_game_spec.get("valid_returns", {}).get(function_name, []), assistant_style=style)
+            ret = ask_openai(prompt, api_key)
+            valid = True
+        else: # Se results não for uma lista, significa que ocorreu um erro na execução e o resultado é um prompt de erro a ser enviado para o OpenAI.
+            ret = ask_openai(results, api_key)
+            valid = False
+
+        thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
+        answer = str(ret.get("resposta", "")) if isinstance(ret, dict) else ""
+
+        return {"valid": valid, "answer": answer, "thought": thought}
+
+def _run_strict_tests(code, style, function_name, api_key, selected_game_spec: Dict[str, Any]):
+        error_prompt = _execute_strict(code, selected_game_spec.get("tests", []).get(function_name, []), style) # <-- "TESTS" deve ser passado como parâmetro para a função _run_tests, vindo do jogo específico. Assim, cada jogo pode ter seus próprios testes definidos na spec e passá-los para essa função genérica de execução.
+
+        if error_prompt:
+            ret = ask_openai(error_prompt, api_key)
+
+            thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
+            answer = str(ret.get("resposta", "")) if isinstance(ret, dict) else ""
+
+            return {"valid": False, "answer": answer, "thought": thought}
+
+        return {"valid": True, "answer": "aceita", "thought": ""}

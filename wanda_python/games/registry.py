@@ -21,7 +21,12 @@ REGISTRY: Dict[str, GameSpec] = {
             "jokenpo2": ["pedra", "papel", "tesoura"]
         },
         prompts_key="jokenpo",
-        pipeline_class=JokenpoPipeline
+        pipeline_class=JokenpoPipeline,
+        prompts={
+            "verbose": "placeholder",
+            "succinct": "placeholder",
+            "intermediate": "placeholder"
+        }
     ),
     "BITS": GameSpec(
         name="BITS",
@@ -36,6 +41,11 @@ REGISTRY: Dict[str, GameSpec] = {
             "bits": ["BIT8", "BIT16", "BIT32", "FIREWALL"]
         },
         prompts_key="bits",
-        pipeline_class=BitsPipeline
+        pipeline_class=BitsPipeline,
+        prompts={
+            "verbose": "placeholder",
+            "succinct": "placeholder",
+            "intermediate": "placeholder"
+        }
     )
 }

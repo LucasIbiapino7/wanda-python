@@ -43,12 +43,14 @@ class ValidateService:
             logger.warning('Codigo malicioso detectado. game=%s function=%s', data.gameName, data.functionName)
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
         # 3 Validação: Assinatura e execução de testes via pipeline
-        _, pipeline = resolve_pipeline(data.gameName, data.functionName)
+        pipeline = resolve_pipeline(data.gameName, data.functionName)
+        # _, pipeline = resolve_pipeline(data.gameName, data.functionName)
         result = await pipeline.validate(
             code=code,
             assistant_style=data.assistantStyle,
             function_name=data.functionName,
-            openai_api_key=self.openai_api_key
+            openai_api_key=self.openai_api_key,
+            selected_game_spec=pipeline.spec
         )
         
         execution_errors = None
@@ -102,12 +104,14 @@ class ValidateService:
         """
 
         # Pega a pipeline
-        spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
+        pipeline = resolve_pipeline(data.gameName, data.functionName)
+        # spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
         out = await pipeline.feedback(
             code=data.code,
             assistant_style=data.assistantStyle,
             function_name=data.functionName,
-            openai_api_key=self.openai_api_key
+            openai_api_key=self.openai_api_key,
+            selected_game_spec=pipeline.spec
         )
         # result: {"valid": bool, "answer": str, "thought": str}
 
@@ -144,12 +148,14 @@ class ValidateService:
             return ValidateResponse.create(False, malicious_errors, "")
 
         # 4) Pipeline -> RUN
-        spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
+        pipeline = resolve_pipeline(data.gameName, data.functionName)
+        # spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
         out = await pipeline.run(
             code=data.code,
             assistant_style=data.assistantStyle,
             function_name=data.functionName,
-            openai_api_key=self.openai_api_key
+            openai_api_key=self.openai_api_key,
+            selected_game_spec=pipeline.spec
         )
 
         logger.info('Run concluido. game=%s function=%s valid=%s', data.gameName, data.functionName, out.get('valid'))
