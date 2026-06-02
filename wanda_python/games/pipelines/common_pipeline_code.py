@@ -73,131 +73,6 @@ def ask_openai(prompt: str, api_key: str) -> dict:
             logger.error("Erro na chamada OpenAI", exc_info=True)
             return {"pensamento": "", "resposta": ""}
 
-# Nova função para selecionar mensagens de erro de assinatura com base no jogo e estilo do assistente.
-# Colocar essas msgs no arquivo do próprio jogo!!!!!!!!!!
-def select_signature_error_message(expected_sig_str: str, function_name: str) -> str:
-    signature_error_messages = {
-        "bits":
-        {
-            "VERBOSE": {
-                "missing_function": (
-                    "Ei! Não encontrei a função 'strategy' no seu código.\n"
-                    f"Para o jogo BITS, ela deve existir assim:\n\n"
-                    f"def strategy({expected_sig_str}):\n"
-                    "    # seu código aqui\n\n"
-                    "Verifique se o nome está correto e se a indentação não quebrou a definição."
-                ),
-                "wrong_signature": (
-                    "Quase lá! Achei a função 'strategy', mas a assinatura não confere.\n"
-                    f"Para o BITS, a ordem correta dos parâmetros é:\n"
-                    f"({expected_sig_str}).\n"
-                    "Ajuste a ordem/nome dos parâmetros para seguir exatamente essa lista."
-                ),
-            },
-            "SUCCINCT": {
-                "missing_function": (
-                    "Função 'strategy' ausente. Use:\n"
-                    f"def strategy({expected_sig_str}):"
-                ),
-                "wrong_signature": (
-                    "Assinatura incorreta. Esperado:\n"
-                    f"({expected_sig_str})."
-                ),
-            },
-            "INTERMEDIATE": {
-                "missing_function": (
-                    "Não encontrei a função 'strategy'. Para o BITS, declare assim:\n"
-                    f"def strategy({expected_sig_str}):"
-                ),
-                "wrong_signature": (
-                    "A função 'strategy' existe, mas a assinatura esperada para o BITS é:\n"
-                    f"({expected_sig_str})."
-                ),
-            },
-        },
-        "jokenpo1": 
-            {
-                "VERBOSE": {
-                    "missing_function": (
-                        "Olá! Sabe, estou olhando seu código e não consegui achar a função 'strategy'.\n"
-                        "Ela precisa estar assim:\n"
-                        f"def strategy({expected_sig_str}):\n"
-                        "    # Seu código\n"
-                        "Verifique se o nome está correto e se não houve problemas de indentação! Estou aqui pra ajudar."
-                    ),
-                    "wrong_signature": (
-                        "Ei! Parece que a sua função 'strategy' não tem os parâmetros na ordem esperada.\n"
-                        f"Devem ser: {expected_sig_str}.\n"
-                        "Dê uma olhada e certifique-se de que eles estejam no lugar certinho, tá bom?"
-                    )
-                },
-                "SUCCINCT": {
-                    "missing_function": (
-                        "Função 'strategy' não encontrada. Ela deve ser:\n"
-                        f"def strategy({expected_sig_str}):"
-                    ),
-                    "wrong_signature": (
-                        "A função 'strategy' existe, mas os parâmetros não batem.\n"
-                        f"Use: {expected_sig_str}."
-                    )
-                },
-                "INTERMEDIATE": {
-                    "missing_function": (
-                        "Não achei a função 'strategy' no seu código. Ela precisa estar declarada como:\n"
-                        f"def strategy({expected_sig_str}):\n"
-                        "Verifique o nome e a indentação para garantir que esteja certo, ok?"
-                    ),
-                    "wrong_signature": (
-                        "A função 'strategy' foi encontrada, mas os parâmetros não estão corretos.\n"
-                        f"Eles devem ser: {expected_sig_str}.\n"
-                        "Dê uma revisada pra garantir que estejam nessa ordem."
-                    )
-                }
-            },
-        "jokenpo2":
-            {
-                    "VERBOSE": {
-                        "missing_function": (
-                            "Olá! Sabe, estou olhando seu código e não consegui achar a função 'strategy'.\n"
-                            "Ela precisa estar assim:\n"
-                            f"def strategy({expected_sig_str}):\n"
-                            "    # Seu código\n"
-                            "Verifique se o nome está correto e se não houve problemas de indentação! Estou aqui pra ajudar."
-                        ),
-                        "wrong_signature": (
-                            "Ei! Parece que a sua função 'strategy' não tem os parâmetros na ordem esperada.\n"
-                            f"Devem ser: {expected_sig_str}.\n"
-                            "Dê uma olhada e certifique-se de que eles estejam no lugar certinho, tá bom?"
-                        )
-                    },
-                    "SUCCINCT": {
-                        "missing_function": (
-                            "Função 'strategy' não encontrada. Ela deve ser:\n"
-                            f"def strategy({expected_sig_str}):"
-                        ),
-                        "wrong_signature": (
-                            "A função 'strategy' existe, mas os parâmetros não batem.\n"
-                            f"Use: {expected_sig_str}."
-                        )
-                    },
-                    "INTERMEDIATE": {
-                        "missing_function": (
-                            "Não achei a função 'strategy' no seu código. Ela precisa estar declarada como:\n"
-                            f"def strategy({expected_sig_str}):\n"
-                            "Verifique o nome e a indentação para garantir que esteja certo, ok?"
-                        ),
-                        "wrong_signature": (
-                            "A função 'strategy' foi encontrada, mas os parâmetros não estão corretos.\n"
-                            f"Eles devem ser: {expected_sig_str}.\n"
-                            "Dê uma revisada pra garantir que estejam nessa ordem."
-                        )
-                    }
-            }
-    }
-    
-    game_msgs = signature_error_messages.get(function_name, {})
-    return game_msgs
-
 def _execute_strict(code: str, TESTS, assistantStyle: str) -> dict:
         local_env = {}
         try:
@@ -298,8 +173,10 @@ def _validate_signature(code, style, function_name, selected_game_spec: Dict[str
         # print(f"Expected signature string: {expected_sig_str}")
 
         # Mensagens por estilo --> São diferentes para cada tipo de jogo (até o momento)
-        messages = select_signature_error_message(expected_sig_str, function_name)
-        style_msgs = messages[style]
+        # messages = select_signature_error_message(expected_sig_str, function_name)
+        messages = selected_game_spec.get("error_messages", {}).get(function_name, {})
+        print(f"Mensagens {messages}")
+        style_msgs = messages[style.lower()]
 
         # Procura a função 'strategy'
         strategy_fn: Optional[ast.FunctionDef] = None
@@ -312,12 +189,12 @@ def _validate_signature(code, style, function_name, selected_game_spec: Dict[str
                 break
         
         if not strategy_fn:
-            return style_msgs["missing_function"]
+            return style_msgs["missing_function"].format(expected_sig_str=expected_sig_str)
         
         # Compara parâmetros
         actual_args = [arg.arg for arg in strategy_fn.args.args]
         if actual_args != expected_args:
-            return style_msgs["wrong_signature"]
+            return style_msgs["wrong_signature"].format(expected_sig_str=expected_sig_str)
 
         return ""  # OK
 
