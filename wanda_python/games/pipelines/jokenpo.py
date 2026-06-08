@@ -35,7 +35,7 @@ class JokenpoPipeline:
             # Teoricamente nao cai aqui, apenas prevenção 
             return None
 
-    async def feedback(
+    def feedback(
         self,
         code: str,
         assistant_style: str,
@@ -87,7 +87,7 @@ class JokenpoPipeline:
     
 
     #RUN 
-    async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+    def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         style = _normalize_style(assistant_style)
 
         # 1) AST
@@ -209,7 +209,7 @@ class JokenpoPipeline:
 
         return {"valid": True, "answer": answer, "thought": thought}
 
-    async def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+    def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         style = _normalize_style(assistant_style)
 
         # 1) AST

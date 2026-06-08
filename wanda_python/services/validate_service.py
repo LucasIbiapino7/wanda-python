@@ -14,6 +14,7 @@ import json
 
 import os
 import ast
+import asyncio
 
 class ValidateService:
 
@@ -30,7 +31,7 @@ class ValidateService:
         logger.info('Validacao iniciada. game=%s function=%s', data.gameName, data.functionName)
         code = data.code  # Pega a função
         # 1 Validação: Sintaxe e indentação
-        response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
+        response_validate = await asyncio.to_thread(self.syntax_validator.validate, code, data.assistantStyle, self.openai_api_key)
         if response_validate:
             logger.info('Validacao reprovada na sintaxe. game=%s function=%s', data.gameName, data.functionName)
             thought = response_validate["pensamento"]
@@ -44,7 +45,8 @@ class ValidateService:
             return ValidateResponse.create(valid=False, answer=malicious_errors, thought="")
         # 3 Validação: Assinatura e execução de testes via pipeline
         _, pipeline = resolve_pipeline(data.gameName, data.functionName)
-        result = await pipeline.validate(
+        result = await asyncio.to_thread(
+            pipeline.validate,
             code=code,
             assistant_style=data.assistantStyle,
             function_name=data.functionName,
@@ -73,7 +75,7 @@ class ValidateService:
         logger.info('Feedback iniciado. game=%s function=%s style=%s', data.gameName, data.functionName, data.assistantStyle)
         code = data.code # Pega a função
         # 1 Validação: Sintaxe e indentação
-        response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
+        response_validate = await asyncio.to_thread(self.syntax_validator.validate, code, data.assistantStyle, self.openai_api_key)
         if response_validate:
             logger.info('Feedback: reprovado na sintaxe. game=%s function=%s', data.gameName, data.functionName)
             thought = response_validate["pensamento"]
@@ -103,7 +105,8 @@ class ValidateService:
 
         # Pega a pipeline
         spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
-        out = await pipeline.feedback(
+        out = await asyncio.to_thread(
+            pipeline.feedback,
             code=data.code,
             assistant_style=data.assistantStyle,
             function_name=data.functionName,
@@ -122,7 +125,7 @@ class ValidateService:
         code = data.code
 
         # 1) Sintaxe
-        response_validate = self.syntax_validator.validate(code, data.assistantStyle, self.openai_api_key)
+        response_validate = await asyncio.to_thread(self.syntax_validator.validate, code, data.assistantStyle, self.openai_api_key)
         if response_validate:
             logger.warning('Run: erro de sintaxe no parse AST. game=%s function=%s', data.gameName, data.functionName)
             return ValidateResponse.create(
@@ -145,7 +148,8 @@ class ValidateService:
 
         # 4) Pipeline -> RUN
         spec, pipeline = resolve_pipeline(data.gameName, data.functionName)
-        out = await pipeline.run(
+        out = await asyncio.to_thread(
+            pipeline.run,
             code=data.code,
             assistant_style=data.assistantStyle,
             function_name=data.functionName,
@@ -158,5 +162,3 @@ class ValidateService:
             answer=str(out.get("answer", "")),
             thought=str(out.get("thought", ""))
         )
-
-    

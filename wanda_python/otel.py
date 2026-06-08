@@ -16,6 +16,14 @@ from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 
 
 def configure_otel():
+    # Telemetria (OTLP/gRPC) só liga se explicitamente habilitada.
+    # Desligada por padrão: evita o panico de fork()/gRPC quando nao ha collector
+    # no ar, que corrompe os containers de partida. Em producao, com o collector
+    # disponivel, defina OTEL_ENABLED=true para reativar.
+    if os.getenv("OTEL_ENABLED", "false").lower() != "true":
+        configure_logging()  # mantem o log no console com o formato de sempre
+        return
+
     set_global_textmap(TraceContextTextMapPropagator())
 
     resource = Resource.create({

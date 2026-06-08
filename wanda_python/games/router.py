@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class GameFeedbackPipeline(Protocol):
-    async def feedback(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> dict:
+    def feedback(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> dict:
         """
         Retorna dict padronizado:
         {
@@ -16,7 +16,7 @@ class GameFeedbackPipeline(Protocol):
           "thought": str
         }
         """
-    async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+    def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         """
         Execução de testes do jogo (assinatura + testes).
         Retorna:
@@ -26,7 +26,7 @@ class GameFeedbackPipeline(Protocol):
           "thought": str
         }
         """
-    async def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+    def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         """
         Validação completa do jogo (assinatura + testes finais).
         Retorna:
