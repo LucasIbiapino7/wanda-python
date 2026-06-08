@@ -26,7 +26,7 @@ class BitsPipeline:
         except SyntaxError:
             return None
     
-    async def feedback(self, code: str, assistant_style: str,function_name: str, openai_api_key: str) -> Dict[str, Any]:
+    def feedback(self, code: str, assistant_style: str,function_name: str, openai_api_key: str) -> Dict[str, Any]:
         style = _normalize_style(assistant_style)
         # 1) AST
         tree = self._parse_ast(code)
@@ -68,7 +68,7 @@ class BitsPipeline:
         except SyntaxError:
             return None
 
-    async def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+    def run(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         style = _normalize_style(assistant_style)
 
         # 1) AST
@@ -143,7 +143,7 @@ class BitsPipeline:
 
         return {"valid": True, "answer": answer, "thought": thought}
     
-    async def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
+    def validate(self, code: str, assistant_style: str, function_name: str, openai_api_key: str) -> Dict[str, Any]:
         style = _normalize_style(assistant_style)
 
         # 1) AST
@@ -208,5 +208,3 @@ class BitsPipeline:
             "answer": "aceita",
             "thought": ""
         }
-
-    

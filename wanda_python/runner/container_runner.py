@@ -4,13 +4,44 @@ import os
 import json
 import asyncio
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
 RUNNER_TMP_DIR = "/tmp/wanda_runner"
 RUNNER_VOLUME_NAME = "wanda_runner_tmp"
 
-_sessions: dict[str, asyncio.subprocess.Process] = {}
+_sessions: dict[str, dict] = {}
+
+_MAX_SESSIONS = int(os.environ.get("WANDA_MAX_SESSIONS", "4"))
+_MAX_SESSION_AGE = int(os.environ.get("WANDA_MAX_SESSION_AGE", "300"))
+_session_limit = asyncio.Semaphore(_MAX_SESSIONS)
+_reaper_task: asyncio.Task | None = None
+
+def _ensure_reaper_started() -> None:
+    """Liga o faxineiro de sessões na primeira vez que for necessário (idempotente)."""
+    global _reaper_task
+    if _reaper_task is None:
+        _reaper_task = asyncio.create_task(_reaper_loop())
+        logger.info("Faxineiro de sessoes iniciado. limite=%s idade_max=%ss",
+                    _MAX_SESSIONS, _MAX_SESSION_AGE)
+
+
+async def _reaper_loop() -> None:
+    """A cada 30s, mata sessões mais velhas que _MAX_SESSION_AGE (libera a vaga delas)."""
+    while True:
+        await asyncio.sleep(30)
+        try:
+            agora = time.monotonic()
+            abandonadas = [
+                sid for sid, s in list(_sessions.items())
+                if agora - s.get("created_at", agora) > _MAX_SESSION_AGE
+            ]
+            for sid in abandonadas:
+                logger.warning("Faxineiro matando sessao abandonada. session_id=%s", sid)
+                await _kill_session(sid)
+        except Exception as e:
+            logger.warning("Erro no faxineiro de sessoes. erro=%s", str(e))
 
 def _execute_in_container(script: str, timeout: int = 5) -> dict:
     # nome único pro arquivo temporário
@@ -230,47 +261,58 @@ for line in sys.stdin:
 
 
 async def create_session(code_p1: str, code_p2: str) -> str:
-    session_id = uuid.uuid4().hex
-    container_name = f"wanda_session_{session_id}"
-    script = _build_session_script(code_p1, code_p2)
+    _ensure_reaper_started()       # garante que o faxineiro está rodando
+    await _session_limit.acquire()  # porteiro: pega uma vaga (ou espera na fila)
+    try:
+        session_id = uuid.uuid4().hex
+        container_name = f"wanda_session_{session_id}"
+        script = _build_session_script(code_p1, code_p2)
 
-    # escreve o script no volume compartilhado
-    os.makedirs(RUNNER_TMP_DIR, exist_ok=True)
-    filename = f"wanda_session_{session_id}.py"
-    tmp_path = os.path.join(RUNNER_TMP_DIR, filename)
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        f.write(script)
+        # escreve o script no volume compartilhado
+        os.makedirs(RUNNER_TMP_DIR, exist_ok=True)
+        filename = f"wanda_session_{session_id}.py"
+        tmp_path = os.path.join(RUNNER_TMP_DIR, filename)
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            f.write(script)
 
-    logger.info("Criando sessao. session_id=%s", session_id)
+        logger.info("Criando sessao. session_id=%s", session_id)
 
-    # sobe o container em modo interativo (stdin/stdout abertos)
-    # --name garante que temos um handle pra matar o container via docker kill
-    # stderr=STDOUT evita deadlock de buffer no stderr
-    # -u desativa o buffering do stdout dentro do container
-    process = await asyncio.create_subprocess_exec(
-        "docker", "run", "--rm", "--interactive", "--init",
-        "--name", container_name,
-        "--network", "none",
-        "--memory", "128m",
-        "--cpus", "0.5",
-        "--user", "65534:65534",
-        "--cap-drop", "ALL",
-        "--security-opt", "no-new-privileges",
-        "--pids-limit", "64",
-        "--read-only",
-        "-v", f"{RUNNER_VOLUME_NAME}:/scripts:ro",
-        "python:3.11-alpine",
-        "python", "-u", f"/scripts/{filename}",
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,  # mescla stderr no stdout — evita deadlock
-    )
+        # sobe o container em modo interativo (stdin/stdout abertos)
+        # --name garante que temos um handle pra matar o container via docker kill
+        # stderr=STDOUT evita deadlock de buffer no stderr
+        # -u desativa o buffering do stdout dentro do container
+        process = await asyncio.create_subprocess_exec(
+            "docker", "run", "--rm", "--interactive", "--init",
+            "--name", container_name,
+            "--network", "none",
+            "--memory", "128m",
+            "--cpus", "0.5",
+            "--user", "65534:65534",
+            "--cap-drop", "ALL",
+            "--security-opt", "no-new-privileges",
+            "--pids-limit", "64",
+            "--read-only",
+            "-v", f"{RUNNER_VOLUME_NAME}:/scripts:ro",
+            "python:3.11-alpine",
+            "python", "-u", f"/scripts/{filename}",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,  # mescla stderr no stdout — evita deadlock
+        )
 
-    # guarda processo e nome do container juntos
-    _sessions[session_id] = {"process": process, "container_name": container_name}
-    logger.info("Sessao criada. session_id=%s pid=%s", session_id, process.pid)
+        # guarda processo, nome do container e instante de criação (usado pelo faxineiro)
+        _sessions[session_id] = {
+            "process": process,
+            "container_name": container_name,
+            "created_at": time.monotonic(),
+        }
+        logger.info("Sessao criada. session_id=%s pid=%s", session_id, process.pid)
 
-    return session_id
+        return session_id
+    except Exception:
+        # falhou antes de registrar a sessão: devolve a vaga pra não vazar
+        _session_limit.release()
+        raise
 
 
 async def execute_round(session_id: str, params_p1: list, params_p2: list, timeout: int = 5) -> dict:
@@ -363,6 +405,10 @@ async def _kill_session(session_id: str) -> None:
     session = _sessions.pop(session_id, None)
     if session is None:
         return
+
+    # a sessão estava registrada => segurava uma vaga: devolve agora.
+    # feito antes do kill pra garantir a liberação mesmo se o docker kill falhar.
+    _session_limit.release()
 
     process = session["process"]
     container_name = session["container_name"]
