@@ -3,6 +3,9 @@ from typing import Optional, Dict, Any, Iterable, Set
 from ..prompts.shared import prompt_error_execution, prompt_run_results
 from ..registry import GameSpec
 
+from ...runner.container_runner import run_tests as runner_run_tests
+from ...runner.container_runner import run_submit as runner_run_submit
+
 import openai
 import ast
 import json
@@ -175,7 +178,7 @@ def _validate_signature(code, style, function_name, selected_game_spec: Dict[str
         # Mensagens por estilo --> São diferentes para cada tipo de jogo (até o momento)
         # messages = select_signature_error_message(expected_sig_str, function_name)
         messages = selected_game_spec.get("error_messages", {}).get(function_name, {})
-        print(f"Mensagens {messages}")
+        # print(f"Mensagens {messages}")
         style_msgs = messages[style.lower()]
 
         # Procura a função 'strategy'
@@ -241,26 +244,77 @@ def _run_semantics(code, style, function_name, api_key, selected_game_spec: Dict
 
 # Novo parâmetro "selected_game_spec" para acessar a spec correta de cada jogo
 def _run_tests(code, style, function_name, api_key, selected_game_spec: Dict[str, Any]):
-        results = _execute(code, selected_game_spec.get("tests", []).get(function_name, []), style, selected_game_spec.get("valid_returns", {}).get(function_name, [])) # <-- "TESTS" deve ser passado como parâmetro para a função _run_tests, vindo do jogo específico. Assim, cada jogo pode ter seus próprios testes definidos na spec e passá-los para essa função genérica de execução.
+        # results = _execute(code, selected_game_spec.get("tests", []).get(function_name, []), style, selected_game_spec.get("valid_returns", {}).get(function_name, [])) # <-- "TESTS" deve ser passado como parâmetro para a função _run_tests, vindo do jogo específico. Assim, cada jogo pode ter seus próprios testes definidos na spec e passá-los para essa função genérica de execução.
+        result = runner_run_tests(code, selected_game_spec.get("tests", []).get(function_name, []), selected_game_spec.get("valid_returns", {}).get(function_name, []))
+
+        # print(f"RESULTS == {results}")
+
+        if result["timed_out"]:
+            return {
+                "valid": False,
+                "answer": "Sua função demorou demais para executar. Verifique se há loops infinitos.",
+                "thought": ""
+            }
+
+        if not result["ok"]:
+            error_prompt = prompt_error_execution(
+                code, erro=result["stderr"], assistantStyle=style
+            )
+            error_dict = ask_openai(error_prompt, api_key)
+
+            return {
+                "valid": False,
+                "answer": str(error_dict.get("resposta", "")),
+                "thought": str(error_dict.get("pensamento", ""))
+            }
+
+        # verifica se algum caso teve erro de execução
+        # print(f"RESULT['results'] == {result['results']}")
+        first_error = next((r for r in result["results"] if not r["valid"]), None)
+        if first_error:
+            error_prompt = prompt_error_execution(
+                code=code, erro=first_error.get("error", "Erro de execução"), assistantStyle=style
+            )
+            error_dict = ask_openai(error_prompt, api_key)
+            return {
+                "valid": False,
+                "answer": str(error_dict.get("resposta", "")),
+                "thought": str(error_dict.get("pensamento", ""))
+            }
+
+        # 4) passa os resultados pro prompt
+        # print(f"Style == {style}")
+        prompt = prompt_run_results(result["results"], selected_game_spec.get("name"), selected_game_spec.get("valid_returns", {}).get(function_name, []), style)
+        # print(f"PROMPT == {prompt}")
+        tests = ask_openai(prompt, api_key)
+        # print(f"RESPOSTA OPENAI == {tests}")
+
+        thought = str(tests.get("pensamento", "")) if isinstance(tests, dict) else ""
+        answer = str(tests.get("resposta", "")) if isinstance(tests, dict) else ""
+
+        return {"valid": True, "answer": answer, "thought": thought}
 
         # Se results for uma lista, significa que a execução ocorreu e temos outputs dos testes para analisar.
-        if isinstance(results, list):
-            prompt = prompt_run_results(results, selected_game_spec.get("name"), selected_game_spec.get("valid_returns", {}).get(function_name, []), assistant_style=style)
-            ret = ask_openai(prompt, api_key)
-            valid = True
-        else: # Se results não for uma lista, significa que ocorreu um erro na execução e o resultado é um prompt de erro a ser enviado para o OpenAI.
-            ret = ask_openai(results, api_key)
-            valid = False
+        # if isinstance(results, list):
+        #     prompt = prompt_run_results(results, selected_game_spec.get("name"), selected_game_spec.get("valid_returns", {}).get(function_name, []), assistant_style=style)
+        #     ret = ask_openai(prompt, api_key)
+        #     valid = True
+        # else: # Se results não for uma lista, significa que ocorreu um erro na execução e o resultado é um prompt de erro a ser enviado para o OpenAI.
+        #     ret = ask_openai(results, api_key)
+        #     valid = False
 
-        thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
-        answer = str(ret.get("resposta", "")) if isinstance(ret, dict) else ""
+        # thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
+        # answer = str(ret.get("resposta", "")) if isinstance(ret, dict) else ""
 
-        return {"valid": valid, "answer": answer, "thought": thought}
+        # return {"valid": valid, "answer": answer, "thought": thought}
 
 def _run_strict_tests(code, style, function_name, api_key, selected_game_spec: Dict[str, Any]):
-        error_prompt = _execute_strict(code, selected_game_spec.get("tests", []).get(function_name, []), style) # <-- "TESTS" deve ser passado como parâmetro para a função _run_tests, vindo do jogo específico. Assim, cada jogo pode ter seus próprios testes definidos na spec e passá-los para essa função genérica de execução.
+        # error_prompt = _execute_strict(code, selected_game_spec.get("tests", []).get(function_name, []), style) # <-- "TESTS" deve ser passado como parâmetro para a função _run_tests, vindo do jogo específico. Assim, cada jogo pode ter seus próprios testes definidos na spec e passá-los para essa função genérica de execução.
+        error_prompt = runner_run_submit(code, selected_game_spec.get("tests", []).get(function_name, []))
 
-        if error_prompt:
+        # print(f"Error_Prompt == {error_prompt}")
+
+        if not error_prompt['ok']:
             ret = ask_openai(error_prompt, api_key)
 
             thought = str(ret.get("pensamento", "")) if isinstance(ret, dict) else ""
