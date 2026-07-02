@@ -117,7 +117,7 @@ sys.exit(0)
 """
 
 
-def run_submit(code: str, test_cases: list, timeout: int = 30) -> dict:
+def run_submit(code: str, test_cases: list, timeout: int = 5) -> dict:
     script = _build_submit_script(code, test_cases)
     return _execute_in_container(script, timeout)
 
